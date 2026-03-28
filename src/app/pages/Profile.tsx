@@ -1,0 +1,393 @@
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import { Sidebar } from "../components/Sidebar";
+import { BottomNav } from "../components/BottomNav";
+import { useFoodMood } from "../context/FoodMoodContext";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Badge } from "../components/ui/badge";
+import {
+  User, Mail, Bell, Shield, LogOut, ChevronRight,
+  Camera, TrendingUp, Leaf, DollarSign,
+  Moon, Globe, Trash2, Download, Save
+} from "lucide-react";
+import { motion } from "motion/react";
+import { toast } from "sonner";
+
+export function Profile() {
+  const navigate = useNavigate();
+  const { userStats } = useFoodMood();
+
+  const [activeSection, setActiveSection] = useState<"account" | "notifications" | "privacy" | "preferences">("account");
+  const [displayName, setDisplayName] = useState("Aslan Aslanov");
+  const [email, setEmail] = useState("aslan123@gmail.com");
+  const [bio, setBio] = useState("lmao");
+  const [notifications, setNotifications] = useState({
+    expiryAlerts: true,
+    communityUpdates: true,
+    weeklyReport: true,
+    recipeRecommendations: true,
+    marketplaceActivity: false,
+  });
+  const [darkMode, setDarkMode] = useState(false);
+  const [language, setLanguage] = useState("English");
+
+  const handleSave = () => {
+    toast.success("Profile updated successfully!");
+  };
+
+  const handleLogout = () => {
+    toast.info("Logging out...");
+    setTimeout(() => navigate("/"), 800);
+  };
+
+  const menuItems = [
+    { id: "account", icon: User, label: "Account Info" },
+    { id: "notifications", icon: Bell, label: "Notifications" },
+    { id: "preferences", icon: Globe, label: "Preferences" },
+    { id: "privacy", icon: Shield, label: "Privacy & Security" },
+  ] as const;
+
+
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar />
+      <BottomNav />
+
+      <main className="lg:ml-64 pb-20 lg:pb-6">
+        <div className="max-w-6xl mx-auto p-6">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <h1 className="text-3xl font-bold text-[#4A5568] mb-1">My Profile</h1>
+            <p className="text-[#4A5568]/60">Manage your account and preferences</p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Left sidebar */}
+            <motion.div
+              className="lg:col-span-1 space-y-4"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              {/* Avatar Card */}
+              <Card className="p-6 text-center rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
+                <div className="relative w-20 h-20 mx-auto mb-4">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#B2D2A4] to-[#7FB069] flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                    A
+                  </div>
+                  <button className="absolute bottom-0 right-0 w-7 h-7 bg-[#4A5568] rounded-full flex items-center justify-center shadow-md hover:bg-[#2D3748] transition-colors">
+                    <Camera className="w-3.5 h-3.5 text-white" />
+                  </button>
+                </div>
+                <h3 className="font-bold text-[#4A5568] mb-0.5">{displayName}</h3>
+                <p className="text-xs text-[#4A5568]/50 mb-3">{email}</p>
+                <Badge className="bg-[#B2D2A4]/20 text-[#4A5568] border-[#B2D2A4]/30">
+                  Waste Warrior Lvl {userStats.wasteWarriorLevel}
+                </Badge>
+              </Card>
+
+              {/* Stats mini */}
+              <Card className="p-4 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-[#B2D2A4]" />
+                      <span className="text-sm text-[#4A5568]/70">Food Saved</span>
+                    </div>
+                    <span className="font-bold text-[#4A5568]">{userStats.foodSavedKg} kg</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Leaf className="w-4 h-4 text-[#B2D2A4]" />
+                      <span className="text-sm text-[#4A5568]/70">CO₂ Offset</span>
+                    </div>
+                    <span className="font-bold text-[#4A5568]">{userStats.co2Offset} kg</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-[#B2D2A4]" />
+                      <span className="text-sm text-[#4A5568]/70">Saved</span>
+                    </div>
+                    <span className="font-bold text-[#4A5568]">${userStats.moneySaved.toFixed(0)}</span>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Nav menu */}
+              <Card className="p-2 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
+                {menuItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveSection(item.id)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all text-left ${
+                      activeSection === item.id
+                        ? "bg-[#B2D2A4]/20 text-[#4A5568]"
+                        : "text-[#4A5568]/60 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className={`w-4 h-4 ${activeSection === item.id ? "text-[#B2D2A4]" : ""}`} />
+                      <span className="text-sm font-medium">{item.label}</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 opacity-40" />
+                  </button>
+                ))}
+                <div className="border-t border-gray-100 mt-2 pt-2">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-50 transition-all text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="text-sm font-medium">Sign Out</span>
+                  </button>
+                </div>
+              </Card>
+            </motion.div>
+
+            {/* Right content */}
+            <motion.div
+              className="lg:col-span-3 space-y-6"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              {/* Account Info */}
+              {activeSection === "account" && (
+                <>
+                  <Card className="p-6 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
+                    <h2 className="text-lg font-bold text-[#4A5568] mb-6">Account Information</h2>
+                    <div className="space-y-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-[#4A5568] mb-1.5 block">Display Name</label>
+                          <Input
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            className="rounded-xl"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-[#4A5568] mb-1.5 block">Email Address</label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4A5568]/40" />
+                            <Input
+                              type="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              className="pl-9 rounded-xl"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-[#4A5568] mb-1.5 block">Bio</label>
+                        <textarea
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value)}
+                          rows={3}
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-[#4A5568] focus:outline-none focus:ring-2 focus:ring-[#B2D2A4]/30 focus:border-[#B2D2A4] resize-none"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-[#4A5568] mb-1.5 block">Location</label>
+                          <Input defaultValue="New York, NY" className="rounded-xl" />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-[#4A5568] mb-1.5 block">Household Size</label>
+                          <select className="w-full px-3 py-2 h-10 rounded-xl border border-gray-200 text-sm text-[#4A5568] focus:outline-none focus:ring-2 focus:ring-[#B2D2A4]/30 bg-white">
+                            <option>1 person</option>
+                            <option>2 people</option>
+                            <option selected>3-4 people</option>
+                            <option>5+ people</option>
+                          </select>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleSave}
+                        className="bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568] rounded-xl px-8"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Changes
+                      </Button>
+                    </div>
+                  </Card>
+
+
+                </>
+              )}
+
+              {/* Notifications */}
+              {activeSection === "notifications" && (
+                <Card className="p-6 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
+                  <h2 className="text-lg font-bold text-[#4A5568] mb-6">Notification Settings</h2>
+                  <div className="space-y-4">
+                    {Object.entries(notifications).map(([key, value]) => {
+                      const labels: Record<string, { label: string; desc: string }> = {
+                        expiryAlerts: { label: "Expiry Alerts", desc: "Get notified when items are about to expire" },
+                        communityUpdates: { label: "Community Updates", desc: "New items shared near you" },
+                        weeklyReport: { label: "Weekly Report", desc: "Your weekly sustainability summary" },
+                        recipeRecommendations: { label: "Recipe Recommendations", desc: "Personalized recipe suggestions" },
+                        marketplaceActivity: { label: "Marketplace Activity", desc: "Updates on your shared items" },
+                      };
+                      return (
+                        <div key={key} className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-50 transition-colors">
+                          <div>
+                            <p className="font-medium text-[#4A5568]">{labels[key]?.label}</p>
+                            <p className="text-sm text-[#4A5568]/50">{labels[key]?.desc}</p>
+                          </div>
+                          <button
+                            onClick={() => setNotifications((prev) => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))}
+                            className={`w-12 h-6 rounded-full transition-all relative ${value ? "bg-[#B2D2A4]" : "bg-gray-200"}`}
+                          >
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${value ? "right-1" : "left-1"}`} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    onClick={() => toast.success("Notification preferences saved!")}
+                    className="mt-6 bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568] rounded-xl px-8"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Preferences
+                  </Button>
+                </Card>
+              )}
+
+              {/* Preferences */}
+              {activeSection === "preferences" && (
+                <Card className="p-6 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
+                  <h2 className="text-lg font-bold text-[#4A5568] mb-6">App Preferences</h2>
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <Moon className="w-5 h-5 text-[#4A5568]/50" />
+                        <div>
+                          <p className="font-medium text-[#4A5568]">Dark Mode</p>
+                          <p className="text-sm text-[#4A5568]/50">Switch to dark interface</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { setDarkMode(!darkMode); toast.info("Dark mode coming soon!"); }}
+                        className={`w-12 h-6 rounded-full transition-all relative ${darkMode ? "bg-[#B2D2A4]" : "bg-gray-200"}`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${darkMode ? "right-1" : "left-1"}`} />
+                      </button>
+                    </div>
+
+                    <div className="p-4 rounded-xl hover:bg-gray-50">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Globe className="w-5 h-5 text-[#4A5568]/50" />
+                        <div>
+                          <p className="font-medium text-[#4A5568]">Language</p>
+                          <p className="text-sm text-[#4A5568]/50">Choose your preferred language</p>
+                        </div>
+                      </div>
+                      <select
+                        value={language}
+                        onChange={(e) => { setLanguage(e.target.value); toast.success(`Language changed to ${e.target.value}`); }}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-[#4A5568] focus:outline-none focus:ring-2 focus:ring-[#B2D2A4]/30 bg-white"
+                      >
+                        <option>English</option>
+                        <option>Русский</option>
+                        <option>Español</option>
+                        <option>Français</option>
+                        <option>Deutsch</option>
+                      </select>
+                    </div>
+
+                    <div className="p-4 rounded-xl hover:bg-gray-50">
+                      <p className="font-medium text-[#4A5568] mb-1">Expiry Alert Threshold</p>
+                      <p className="text-sm text-[#4A5568]/50 mb-3">Notify me when items expire within</p>
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 5, 7].map((days) => (
+                          <button
+                            key={days}
+                            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all border ${
+                              days === 3
+                                ? "bg-[#B2D2A4] text-[#4A5568] border-[#B2D2A4]"
+                                : "border-gray-200 text-[#4A5568]/60 hover:bg-gray-50"
+                            }`}
+                          >
+                            {days}d
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => toast.success("Preferences saved!")}
+                    className="mt-6 bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568] rounded-xl px-8"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Preferences
+                  </Button>
+                </Card>
+              )}
+
+              {/* Privacy */}
+              {activeSection === "privacy" && (
+                <Card className="p-6 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
+                  <h2 className="text-lg font-bold text-[#4A5568] mb-6">Privacy & Security</h2>
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl border border-gray-100">
+                      <h3 className="font-medium text-[#4A5568] mb-1">Change Password</h3>
+                      <p className="text-sm text-[#4A5568]/50 mb-3">Update your account password</p>
+                      <div className="space-y-3">
+                        <Input type="password" placeholder="Current password" className="rounded-xl" />
+                        <Input type="password" placeholder="New password" className="rounded-xl" />
+                        <Input type="password" placeholder="Confirm new password" className="rounded-xl" />
+                        <Button
+                          onClick={() => toast.success("Password updated!")}
+                          className="bg-[#4A5568] hover:bg-[#2D3748] text-white rounded-xl"
+                        >
+                          Update Password
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-gray-100">
+                      <h3 className="font-medium text-[#4A5568] mb-1">Data Export</h3>
+                      <p className="text-sm text-[#4A5568]/50 mb-3">Download all your FoodMood data</p>
+                      <Button
+                        variant="outline"
+                        onClick={() => toast.success("Your data export is being prepared!")}
+                        className="rounded-xl"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Export My Data
+                      </Button>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-red-100 bg-red-50/50">
+                      <h3 className="font-medium text-red-500 mb-1">Delete Account</h3>
+                      <p className="text-sm text-[#4A5568]/50 mb-3">
+                        Permanently delete your account and all associated data
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => toast.error("Please contact support to delete your account")}
+                        className="border-red-300 text-red-400 hover:bg-red-50 rounded-xl"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Account
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </motion.div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
