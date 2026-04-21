@@ -294,7 +294,7 @@ export function Login() {
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                     <Input
                       type="text"
-                      placeholder="Aslan Aslanov"
+                      placeholder="Alex Johnson"
                       value={signupName}
                       onChange={(e) => setSignupName(e.target.value)}
                       className="pl-10 h-11 rounded-xl bg-white/10 border-white/10 text-white placeholder:text-white/30 focus:border-[#B2D2A4] focus:ring-[#B2D2A4]/20"

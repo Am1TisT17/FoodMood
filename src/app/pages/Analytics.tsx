@@ -217,7 +217,9 @@ export function Analytics() {
             </motion.div>
           </div>
 
+          {/* Charts row 2 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Weekly consumed vs wasted */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -242,6 +244,7 @@ export function Analytics() {
               </Card>
             </motion.div>
 
+            {/* Sustainability score trend */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -272,6 +275,7 @@ export function Analytics() {
             </motion.div>
           </div>
 
+          {/* Goals section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

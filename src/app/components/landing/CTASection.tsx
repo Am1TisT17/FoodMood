@@ -72,12 +72,13 @@ export function CTASection() {
               </p>
             </div>
 
+            {/* Right: Steps */}
             <div className="grid grid-cols-2 gap-4">
               {steps.map((step, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale:1 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 + i * 0.1 }}
                   className="bg-white/8 hover:bg-white/15 border border-white/10 rounded-3xl p-7 transition-all duration-300 group cursor-pointer"

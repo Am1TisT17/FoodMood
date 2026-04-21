@@ -51,6 +51,10 @@ export function HowItWorksSection() {
           viewport={{ once: true }}
           className="text-center mb-20"
         >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#1a2332]/8 text-sm font-medium text-[#4A5568] mb-6">
+            <span className="w-2 h-2 rounded-full bg-[#B2D2A4]" />
+            Simple 4-step process
+          </div>
           <h2 className="text-5xl md:text-6xl font-black text-[#1a2332] mb-6 leading-tight">
             Start saving in{" "}
             <span className="text-[#B2D2A4]">minutes</span>
@@ -138,7 +142,33 @@ export function HowItWorksSection() {
               </div>
             </motion.div>
           ))}
-        </div>        
+        </div>
+
+        {/* Bottom CTA card */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="bg-gradient-to-br from-[#1a2332] to-[#2d3748] rounded-3xl p-12 text-center relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#B2D2A4]/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative z-10">
+            <p className="text-[#B2D2A4] font-semibold mb-3">Ready to start?</p>
+            <h3 className="text-3xl font-black text-white mb-4">
+              Join 48,200+ households already saving
+            </h3>
+            <p className="text-white/60 mb-8 max-w-lg mx-auto">
+              Free to use. No credit card required. Start your sustainability journey today.
+            </p>
+            <a
+              href="/login"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#1a2332] rounded-2xl font-bold text-lg transition-all shadow-xl shadow-[#B2D2A4]/30 hover:shadow-2xl"
+            >
+              Get started for free
+              <ArrowDown className="w-5 h-5 rotate-[-90deg]" />
+            </a>
+          </div>
+        </motion.div>
       </div>
     </section>
   );

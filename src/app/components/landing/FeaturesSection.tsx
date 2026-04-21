@@ -88,6 +88,10 @@ export function FeaturesSection() {
           viewport={{ once: true }}
           className="text-center mb-20"
         >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#B2D2A4]/15 border border-[#B2D2A4]/30 text-sm font-medium text-[#4A5568] mb-6">
+            <Zap className="w-4 h-4 text-[#B2D2A4]" />
+            Everything in one platform
+          </div>
           <h2 className="text-5xl md:text-6xl font-black text-[#1a2332] mb-6 leading-tight">
             Powerful features for{" "}
             <span className="text-[#B2D2A4]">smarter</span> eating
@@ -128,6 +132,23 @@ export function FeaturesSection() {
             </motion.div>
           ))}
         </div>
+
+        {/* Bottom highlights bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-[#1a2332] rounded-3xl"
+        >
+          {highlights.map((h, i) => (
+            <div key={i} className="flex items-center gap-3 justify-center md:justify-start">
+              <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                <h.icon className="w-4 h-4 text-[#B2D2A4]" />
+              </div>
+              <span className="text-sm font-medium text-white/80">{h.text}</span>
+            </div>
+          ))}
+        </motion.div>
       </div>
     </section>
   );

@@ -9,7 +9,7 @@ import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import {
   User, Mail, Bell, Shield, LogOut, ChevronRight,
-  Camera, TrendingUp, Leaf, DollarSign,
+  Camera, TrendingUp, Leaf, DollarSign, Award,
   Moon, Globe, Trash2, Download, Save
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -20,9 +20,9 @@ export function Profile() {
   const { userStats } = useFoodMood();
 
   const [activeSection, setActiveSection] = useState<"account" | "notifications" | "privacy" | "preferences">("account");
-  const [displayName, setDisplayName] = useState("Aslan Aslanov");
-  const [email, setEmail] = useState("aslan123@gmail.com");
-  const [bio, setBio] = useState("lmao");
+  const [displayName, setDisplayName] = useState("Alex Johnson");
+  const [email, setEmail] = useState("alex@foodmood.app");
+  const [bio, setBio] = useState("Passionate about reducing food waste and sustainable living 🌿");
   const [notifications, setNotifications] = useState({
     expiryAlerts: true,
     communityUpdates: true,
@@ -49,7 +49,14 @@ export function Profile() {
     { id: "privacy", icon: Shield, label: "Privacy & Security" },
   ] as const;
 
-
+  const achievements = [
+    { icon: "🌿", title: "Waste Warrior", desc: "Saved 100+ kg of food", unlocked: true },
+    { icon: "♻️", title: "Eco Champion", desc: "Offset 50+ kg CO₂", unlocked: true },
+    { icon: "👥", title: "Community Star", desc: "Shared 10+ items", unlocked: true },
+    { icon: "🍳", title: "Master Chef", desc: "Used 50 recipes", unlocked: false },
+    { icon: "📱", title: "Scanner Pro", desc: "Scanned 100 receipts", unlocked: false },
+    { icon: "💰", title: "Money Saver", desc: "Saved $500+", unlocked: false },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -219,7 +226,32 @@ export function Profile() {
                     </div>
                   </Card>
 
-
+                  {/* Achievements */}
+                  <Card className="p-6 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
+                    <div className="flex items-center gap-2 mb-6">
+                      <Award className="w-5 h-5 text-[#B2D2A4]" />
+                      <h2 className="text-lg font-bold text-[#4A5568]">Achievements</h2>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {achievements.map((achievement, index) => (
+                        <div
+                          key={index}
+                          className={`p-4 rounded-2xl text-center border transition-all ${
+                            achievement.unlocked
+                              ? "bg-[#B2D2A4]/10 border-[#B2D2A4]/30"
+                              : "bg-gray-50 border-gray-100 opacity-50"
+                          }`}
+                        >
+                          <div className="text-3xl mb-2">{achievement.icon}</div>
+                          <p className="text-sm font-semibold text-[#4A5568] mb-1">{achievement.title}</p>
+                          <p className="text-xs text-[#4A5568]/50">{achievement.desc}</p>
+                          {achievement.unlocked && (
+                            <Badge className="mt-2 bg-[#B2D2A4] text-white text-xs">Unlocked</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
                 </>
               )}
 
