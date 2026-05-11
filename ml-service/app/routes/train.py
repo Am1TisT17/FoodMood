@@ -12,5 +12,6 @@ router = APIRouter(tags=["train"])
 async def trigger_train(request: Request):
     matcher = request.app.state.matcher
     result = await retrain_pipeline(matcher)
+    request.app.state.training_status = result
     log.info("Training finished: %s", result)
     return result

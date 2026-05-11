@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
-from datetime import datetime
+from datetime import date, datetime, time, timezone
 
 
 # request contract from Node.js backend (matches mlClient.js)
@@ -12,6 +12,23 @@ class PantryItem(BaseModel):
     expiryDate: Optional[datetime] = None
     category: Optional[str] = None
     price: Optional[float] = Field(None, ge=0)
+
+    @field_validator("expiryDate", mode="before")
+    @classmethod
+    def parse_expiry_date(cls, value):
+        if value in (None, ""):
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, date):
+            return datetime.combine(value, time.min, tzinfo=timezone.utc)
+        if isinstance(value, str):
+            raw = value.strip()
+            try:
+                return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            except ValueError:
+                return datetime.combine(date.fromisoformat(raw), time.min, tzinfo=timezone.utc)
+        return value
 
 
 class RecommendRequest(BaseModel):

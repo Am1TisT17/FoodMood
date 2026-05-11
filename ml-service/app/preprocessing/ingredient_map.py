@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """ingredient synonyms + default shelf-life fallback"""
 
 INGREDIENT_SYNONYMS: dict[str, list[str]] = {
