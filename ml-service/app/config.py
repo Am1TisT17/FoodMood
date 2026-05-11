@@ -23,7 +23,9 @@ class Settings(BaseSettings):
     internal_api_key: str = "change-me"
 
     model_dir: str = "/app/data/models"
+    receipt_feedback_path: str = "/app/data/receipt_feedback.jsonl"
     auto_train_on_start: bool = True
+    auto_train_on_receipt_feedback: bool = True
 
     tfidf_max_features: int = 3000
     tfidf_ngram_max: int = 2

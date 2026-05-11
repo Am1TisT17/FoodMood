@@ -63,6 +63,40 @@ class RecommendResponse(BaseModel):
     modelVersion: str
 
 
+# OCR confirmation feedback
+
+class ReceiptItem(BaseModel):
+    name: str = Field(..., min_length=1)
+    category: Optional[str] = None
+    quantity: Optional[float] = Field(1, ge=0)
+    unit: Optional[str] = "pcs"
+    price: Optional[float] = Field(0, ge=0)
+    expiryDate: Optional[datetime] = None
+    confidence: Optional[float] = Field(None, ge=0, le=100)
+
+    @field_validator("expiryDate", mode="before")
+    @classmethod
+    def parse_expiry_date(cls, value):
+        return PantryItem.parse_expiry_date(value)
+
+
+class ReceiptConfirmationRequest(BaseModel):
+    userId: Optional[str] = None
+    rawText: Optional[str] = None
+    meanConfidence: Optional[float] = Field(None, ge=0, le=100)
+    parsedItems: List[ReceiptItem] = Field(default_factory=list)
+    confirmedItems: List[ReceiptItem] = Field(..., min_length=1)
+
+
+class ReceiptConfirmationResponse(BaseModel):
+    acceptedFoodItems: int
+    rejectedNonFoodItems: int
+    acceptedNames: List[str]
+    rejectedNames: List[str]
+    trainingTriggered: bool
+    trainingStatus: Optional[dict] = None
+
+
 # rule mining (eLCS)
 
 class InsightRule(BaseModel):

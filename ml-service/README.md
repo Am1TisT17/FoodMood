@@ -15,9 +15,12 @@ Implemented:
 - FastAPI application entrypoint: `app.main:app`
 - health endpoint: `GET /health`
 - recommendation endpoint: `POST /recommend`
+- OCR confirmation endpoint: `POST /receipts/confirm`
 - protected training endpoint: `POST /train`
 - protected rule-insights endpoint: `GET /insights`
 - startup auto-training from MongoDB
+- automatic retraining after confirmed receipt feedback
+- food-only filtering for OCR-confirmed items
 - TF-IDF pantry vectorizer
 - recipe matcher using cosine similarity, ingredient coverage, and expiry urgency
 - eLCS-based waste rule mining scaffold
@@ -28,7 +31,7 @@ Not yet implemented:
 - deep-learning or LLM-based recommendation
 - persistent model artifacts
 - event-log based personalization
-- receipt/OCR training data storage
+- production-grade receipt/OCR feedback storage
 - large recipe corpus
 - frontend UI for explaining ML scores
 
@@ -98,6 +101,21 @@ Uses `scikit-eLCS` to mine interpretable rules from finished food-item outcomes:
 This component needs real historical outcome data. It will not fit until there are enough completed `FoodItem` records.
 
 ## Data Flow
+
+### Receipt-to-ML Flow
+
+```text
+1. User scans a receipt photo.
+2. OCR extracts raw text and parsed grocery candidates.
+3. The user confirms or corrects the recognized items in the UI.
+4. The backend can send the confirmed OCR result to POST /receipts/confirm.
+5. The ML service filters out non-food items.
+6. Accepted food items are stored as receipt feedback.
+7. The ML service retrains automatically if receipt feedback contains food.
+8. Future recommendations can use the updated training signal.
+```
+
+Important: the ML service does not train directly from photos. It trains from structured, user-confirmed OCR output.
 
 ### Recommendation Flow
 
@@ -204,6 +222,73 @@ Response:
 }
 ```
 
+### `POST /receipts/confirm`
+
+Service-to-service endpoint for user-confirmed OCR results. It is designed for the backend to call after the user confirms the scanned receipt items.
+
+The service accepts OCR text and parsed items, keeps only confirmed food items, stores them as training feedback, and retrains automatically when `AUTO_TRAIN_ON_RECEIPT_FEEDBACK=true`.
+
+Request:
+
+```json
+{
+  "userId": "user_id",
+  "rawText": "MILK 2.5 1L 650\nTOOTHPASTE 1200\nPASTA 500G 450",
+  "meanConfidence": 87,
+  "parsedItems": [
+    {
+      "name": "Milk 2.5 1L",
+      "category": "Dairy",
+      "quantity": 1,
+      "unit": "L",
+      "price": 650,
+      "expiryDate": "2026-05-15",
+      "confidence": 91
+    }
+  ],
+  "confirmedItems": [
+    {
+      "name": "Milk 2.5 1L",
+      "category": "Dairy",
+      "quantity": 1,
+      "unit": "L",
+      "price": 650,
+      "expiryDate": "2026-05-15",
+      "confidence": 91
+    },
+    {
+      "name": "Toothpaste",
+      "category": "Other",
+      "quantity": 1,
+      "unit": "pcs",
+      "price": 1200,
+      "confidence": 80
+    }
+  ]
+}
+```
+
+Response:
+
+```json
+{
+  "acceptedFoodItems": 1,
+  "rejectedNonFoodItems": 1,
+  "acceptedNames": ["Milk 2.5 1L"],
+  "rejectedNames": ["Toothpaste"],
+  "trainingTriggered": true,
+  "trainingStatus": {
+    "status": "ok",
+    "fooditems": 5,
+    "mongo_fooditems": 0,
+    "receipt_feedback_items": 1,
+    "recipes_indexed": 4,
+    "users": 1,
+    "elcs_samples": 0
+  }
+}
+```
+
 ### `POST /train`
 
 Protected endpoint for manual retraining.
@@ -289,7 +374,9 @@ Defined in `app/config.py`.
 | `RECIPES_COLLECTION` | `recipes` | Recipe collection |
 | `USERS_COLLECTION` | `users` | User collection |
 | `INTERNAL_API_KEY` | `change-me` | Key for protected endpoints |
+| `RECEIPT_FEEDBACK_PATH` | `/app/data/receipt_feedback.jsonl` | Confirmed OCR feedback storage |
 | `AUTO_TRAIN_ON_START` | `true` | Train during app startup |
+| `AUTO_TRAIN_ON_RECEIPT_FEEDBACK` | `true` | Retrain after confirmed receipt food feedback |
 | `TFIDF_MAX_FEATURES` | `3000` | TF-IDF max vocabulary size |
 | `TFIDF_NGRAM_MAX` | `2` | Maximum n-gram size |
 | `URGENT_WINDOW_DAYS` | `3` | Expiry urgency threshold |
@@ -342,6 +429,7 @@ If recipes are returned, the recommendation pipeline is working.
 - There is no event log yet for clicked, viewed, ignored, or cooked recommendations.
 - The service currently trains in memory; model persistence can be added later.
 - Product normalization is dictionary-based and should be expanded with real receipt/pantry data.
+- Receipt feedback is stored locally in JSONL format; production deployments should persist it in MongoDB or object storage.
 
 ## Recommended Next Steps
 

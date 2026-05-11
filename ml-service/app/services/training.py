@@ -11,6 +11,7 @@ from ..models.pantry_vectorizer import vectorizer
 from ..models.recipe_matcher import RecipeMatcher
 from ..models.elcs_classifier import waste_classifier
 from .feature_builder import build_outcome_samples
+from .receipt_feedback import load_receipt_fooditems
 
 log = logging.getLogger(__name__)
 
@@ -57,9 +58,16 @@ def _aggregate_user_pantries(food_items: List[Dict[str, Any]]) -> List[Dict[str,
 
 
 async def retrain_pipeline(matcher: RecipeMatcher) -> dict:
-    food_items = await _load_fooditems()
+    mongo_food_items = await _load_fooditems()
+    receipt_food_items = load_receipt_fooditems()
+    food_items = [*mongo_food_items, *receipt_food_items]
     recipes_raw = await _load_recipes()
-    log.info("Loaded %d FoodItems and %d recipes", len(food_items), len(recipes_raw))
+    log.info(
+        "Loaded %d Mongo FoodItems, %d receipt feedback items, and %d recipes",
+        len(mongo_food_items),
+        len(receipt_food_items),
+        len(recipes_raw),
+    )
 
     user_pantries = _aggregate_user_pantries(food_items)
     if not user_pantries:
@@ -90,6 +98,8 @@ async def retrain_pipeline(matcher: RecipeMatcher) -> dict:
     return {
         "status": "ok",
         "fooditems": len(food_items),
+        "mongo_fooditems": len(mongo_food_items),
+        "receipt_feedback_items": len(receipt_food_items),
         "recipes_indexed": matcher.size,
         "users": len(user_pantries),
         "elcs_samples": int(X.shape[0]),
