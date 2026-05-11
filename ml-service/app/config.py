@@ -1,19 +1,35 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore",
+        protected_namespaces=("settings_",),
+    )
+
     app_name: str = "FoodMood ML Service"
     host: str = "0.0.0.0"
     port: int = 4200
+    log_level: str = "INFO"
+
     mongo_uri: str = "mongodb://mongo:27017"
     mongo_db: str = "foodmood"
+    fooditems_collection: str = "fooditems"
     recipes_collection: str = "recipes"
-    # TF-IDF
-    tfidf_max_features: int = 5000
-    tfidf_ngram_max: int = 2
-    # API auth
+    users_collection: str = "users"
+
     internal_api_key: str = "change-me"
 
-    class Config:
-        env_file = ".env"
+    model_dir: str = "/app/data/models"
+    auto_train_on_start: bool = True
+
+    tfidf_max_features: int = 3000
+    tfidf_ngram_max: int = 2
+
+    urgent_window_days: int = 3
+    soon_window_days: int = 7
+
 
 settings = Settings()
