@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Sidebar } from "../components/Sidebar";
 import { BottomNav } from "../components/BottomNav";
-import { useFoodMood, FoodItem } from "../context/FoodMoodContext";
+import { useFoodMood } from "../context/FoodMoodContext";
+import { api } from "../../lib/api";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -18,30 +19,39 @@ interface ScannedItem {
   confidence: number;
 }
 
-const mockScannedItems: ScannedItem[] = [
-  { name: "Whole Milk 2%", price: "2.99", expiryDate: "2026-03-25", confidence: 95 },
-  { name: "Organic Eggs Large", price: "4.99", expiryDate: "2026-03-28", confidence: 92 },
-  { name: "Fresh Spinach", price: "3.49", expiryDate: "2026-03-22", confidence: 88 },
-  { name: "Cheddar Cheese", price: "5.99", expiryDate: "2026-04-05", confidence: 78 },
-  { name: "Greek Yogurt", price: "1.99", expiryDate: "2026-03-24", confidence: 94 },
-];
-
 export function Scanner() {
   const navigate = useNavigate();
-  const { addItem } = useFoodMood();
+  const { refresh } = useFoodMood();
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [items, setItems] = useState<ScannedItem[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  const handleScan = () => {
+  // Two hidden inputs: one for the camera (mobile), one for file picker.
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
     setScanning(true);
-    setTimeout(() => {
-      setScanning(false);
+    try {
+      const { items: parsed } = await api.scanReceipt(file);
+      if (!parsed || parsed.length === 0) {
+        toast.error("Couldn't read any items from the receipt. Try a clearer photo.");
+        setScanning(false);
+        return;
+      }
+      setItems(parsed);
       setScanned(true);
-      setItems(mockScannedItems);
-      toast.success("Receipt scanned successfully!");
-    }, 2000);
+      toast.success(`Receipt scanned — found ${parsed.length} items`);
+    } catch (err: any) {
+      toast.error(err?.message || "Scan failed");
+    } finally {
+      setScanning(false);
+    }
   };
+
+  const onCameraClick = () => cameraInputRef.current?.click();
+  const onUploadClick = () => fileInputRef.current?.click();
 
   const handleItemChange = (index: number, field: keyof ScannedItem, value: string) => {
     const newItems = [...items];
@@ -49,29 +59,52 @@ export function Scanner() {
     setItems(newItems);
   };
 
-  const handleAddToPantry = () => {
-    items.forEach((item, index) => {
-      const newItem: FoodItem = {
-        id: Date.now().toString() + index,
-        name: item.name,
-        category: "Other",
-        quantity: 1,
-        unit: "pcs",
-        price: parseFloat(item.price),
-        expiryDate: item.expiryDate,
-        addedDate: new Date().toISOString().split('T')[0],
-      };
-      addItem(newItem);
-    });
-    toast.success(`${items.length} items added to pantry!`);
-    navigate('/pantry');
+  const handleAddToPantry = async () => {
+    setSaving(true);
+    try {
+      await api.addItemsBatch(
+        items.map((item) => ({
+          name: item.name,
+          category: "Other",
+          quantity: 1,
+          unit: "pcs",
+          price: parseFloat(item.price) || 0,
+          expiryDate: item.expiryDate,
+          addedDate: new Date().toISOString().split("T")[0],
+        })) as any
+      );
+      await refresh();
+      toast.success(`${items.length} items added to pantry!`);
+      navigate("/pantry");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save items");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
       <BottomNav />
-      
+
+      {/* Hidden inputs — wired to the visible buttons */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+      />
+
       <main className="lg:ml-64 pb-20 lg:pb-6">
         <div className="max-w-7xl mx-auto p-6">
           <motion.div
@@ -104,29 +137,29 @@ export function Scanner() {
                         <Upload className="w-16 h-16 text-[#B2D2A4]" />
                       )}
                     </div>
-                    
+
                     <h2 className="text-2xl font-semibold text-[#4A5568] mb-4">
                       {scanning ? "Scanning Receipt..." : "Upload Receipt"}
                     </h2>
-                    
+
                     <p className="text-[#4A5568]/60 mb-6">
-                      {scanning 
-                        ? "Our AI is analyzing your receipt..." 
+                      {scanning
+                        ? "Our AI is analyzing your receipt..."
                         : "Take a photo or upload an image of your grocery receipt"}
                     </p>
 
                     {!scanning && (
                       <div className="flex flex-col gap-3">
-                        <Button 
-                          onClick={handleScan}
+                        <Button
+                          onClick={onCameraClick}
                           className="bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568]"
                           size="lg"
                         >
                           <Camera className="w-5 h-5 mr-2" />
                           Take Photo
                         </Button>
-                        <Button 
-                          onClick={handleScan}
+                        <Button
+                          onClick={onUploadClick}
                           variant="outline"
                           size="lg"
                         >
@@ -143,7 +176,7 @@ export function Scanner() {
                             className="h-full bg-[#B2D2A4]"
                             initial={{ width: 0 }}
                             animate={{ width: "100%" }}
-                            transition={{ duration: 2 }}
+                            transition={{ duration: 8 }}
                           />
                         </div>
                       </div>
@@ -174,7 +207,7 @@ export function Scanner() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex gap-4">
                       <div className="w-8 h-8 rounded-full bg-[#B2D2A4] text-white flex items-center justify-center flex-shrink-0">
                         2
@@ -186,7 +219,7 @@ export function Scanner() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex gap-4">
                       <div className="w-8 h-8 rounded-full bg-[#B2D2A4] text-white flex items-center justify-center flex-shrink-0">
                         3
@@ -198,7 +231,7 @@ export function Scanner() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex gap-4">
                       <div className="w-8 h-8 rounded-full bg-[#B2D2A4] text-white flex items-center justify-center flex-shrink-0">
                         4
@@ -235,7 +268,7 @@ export function Scanner() {
                     <div key={index} className="p-4 border rounded-xl hover:border-[#B2D2A4] transition-colors">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-sm font-medium text-[#4A5568]">Item {index + 1}</span>
-                        <Badge 
+                        <Badge
                           variant="outline"
                           className={item.confidence < 85 ? "border-amber-500 text-amber-500" : "border-green-500 text-green-500"}
                         >
@@ -243,7 +276,7 @@ export function Scanner() {
                           {item.confidence}% confidence
                         </Badge>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <label className="text-xs text-[#4A5568]/60 mb-1 block">Item Name</label>
@@ -276,13 +309,14 @@ export function Scanner() {
                 <div className="flex gap-3">
                   <Button
                     onClick={handleAddToPantry}
+                    disabled={saving}
                     className="flex-1 bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568]"
                     size="lg"
                   >
-                    Add {items.length} Items to Pantry
+                    {saving ? "Saving..." : `Add ${items.length} Items to Pantry`}
                   </Button>
                   <Button
-                    onClick={() => setScanned(false)}
+                    onClick={() => { setScanned(false); setItems([]); }}
                     variant="outline"
                     size="lg"
                   >

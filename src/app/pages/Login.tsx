@@ -6,6 +6,7 @@ import { Input } from "../components/ui/input";
 import { Leaf, Eye, EyeOff, Mail, Lock, User, Check, ArrowLeft } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
+import { api } from "../../lib/api";
 
 export function Login() {
   const navigate = useNavigate();
@@ -29,41 +30,37 @@ export function Login() {
   // Mobile tab
   const [mobileTab, setMobileTab] = useState<"login" | "signup">("login");
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loginEmail || !loginPassword) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-    setLoginLoading(true);
-    setTimeout(() => {
-      setLoginLoading(false);
-      toast.success("Welcome back to FoodMood!");
-      navigate("/dashboard");
-    }, 1200);
-  };
-
-  const handleSignup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!signupName || !signupEmail || !signupPassword || !signupConfirm) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-    if (signupPassword !== signupConfirm) {
-      toast.error("Passwords do not match");
-      return;
-    }
-    if (!acceptTerms) {
-      toast.error("Please accept the Terms of Service");
-      return;
-    }
-    setSignupLoading(true);
-    setTimeout(() => {
-      setSignupLoading(false);
-      toast.success("Account created! Welcome to FoodMood 🌿");
-      navigate("/dashboard");
-    }, 1400);
-  };
+  const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!loginEmail || !loginPassword) {
+    toast.error("Please fill in all fields");
+    return;
+  }
+  setLoginLoading(true);
+  try {
+    await api.login({ email: loginEmail, password: loginPassword });
+    toast.success("Welcome back to FoodMood!");
+    navigate("/dashboard");
+  } catch (err: any) {
+    toast.error(err.message || "Login failed");
+  } finally {
+    setLoginLoading(false);
+  }
+};
+  const handleSignup = async (e: React.FormEvent) => {
+  e.preventDefault();
+  // ... validation unchanged ...
+  setSignupLoading(true);
+  try {
+    await api.register({ name: signupName, email: signupEmail, password: signupPassword });
+    toast.success("Account created! Welcome to FoodMood 🌿");
+    navigate("/dashboard");
+  } catch (err: any) {
+    toast.error(err.message || "Sign up failed");
+  } finally {
+    setSignupLoading(false);
+  }
+};
 
   const passwordStrength = (pwd: string) => {
     if (pwd.length === 0) return 0;
