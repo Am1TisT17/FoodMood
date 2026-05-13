@@ -5,11 +5,11 @@ from typing import Any
 from ..config import settings
 from ..db import get_db
 from ..models.pantry_vectorizer import vectorizer
-from ..models.personal_ranker import RankInput, ranker
-from ..models.recipe_matcher import MatchResult, RecipeMatcher
+from ..models.recipe_matcher import RecipeMatcher
 from ..preprocessing.normalizer import canonical_ingredient, days_to_expiry
 from ..schemas import PantryItem, RecipeSuggestionNotification
 from .feedback_store import recipe_popularity, user_action_counts, user_recipe_interactions
+from .ranker_rerank import personal_rerank_match_results
 from .reccomendation import build_recipe_out, canonicalize_pantry
 
 try:
@@ -95,46 +95,6 @@ def _urgent_targets(pantry: list[PantryItem], items_limit: int) -> list[dict[str
     return ordered[:items_limit]
 
 
-async def _personalize(
-    user_id: str | None,
-    candidates: list[MatchResult],
-    days_left: int,
-    recipes_per_item: int,
-) -> list[MatchResult]:
-    """Re-rank matcher candidates with the personalized model.
-
-    Falls back to original matcher order when:
-      - no user_id supplied
-      - the ranker is not yet fitted (cold start)
-      - feedback storage is empty
-    """
-    if not user_id or not candidates:
-        return candidates[:recipes_per_item]
-
-    popularity = await recipe_popularity()
-    counts = await user_action_counts(user_id)
-    history = await user_recipe_interactions(user_id)
-
-    inputs: list[RankInput] = []
-    for c in candidates:
-        recipe_id = str(c.recipe.get("_id"))
-        inputs.append(
-            RankInput(
-                cosine=c.cosine,
-                coverage=c.coverage,
-                urgent_used=len(c.urgent_used),
-                days_to_expiry=days_left,
-                user_total_acts=int(counts.get("total", 0)),
-                user_seen_recipe=float(history.get(recipe_id, 0.0)),
-                recipe_popularity=float(popularity.get(recipe_id, 0.0)),
-            )
-        )
-
-    scores = ranker.score(inputs)
-    paired = sorted(zip(scores, candidates), key=lambda p: -p[0])
-    return [c for _, c in paired[:recipes_per_item]]
-
-
 async def build_recipe_suggestion_notifications(
     matcher: RecipeMatcher,
     pantry: list[PantryItem],
@@ -178,11 +138,11 @@ async def build_recipe_suggestion_notifications(
                 candidate_pool.append(result)
                 seen_ids.add(rid)
 
-        selected = await _personalize(
-            user_id=user_id,
-            candidates=candidate_pool,
-            days_left=target["days_left"],
-            recipes_per_item=recipes_per_item,
+        selected, _, _ = await personal_rerank_match_results(
+            user_id,
+            candidate_pool,
+            days_to_expiry_feature=target["days_left"],
+            take=recipes_per_item,
         )
 
         if not selected:

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request
 
 from ..models.elcs_classifier import waste_classifier
 from ..models.pantry_vectorizer import vectorizer
+from ..models.personal_ranker import ranker
 from ..schemas import HealthResponse
 
 
@@ -14,6 +15,8 @@ def healthcheck(request: Request):
     recipes_indexed = matcher.size if matcher is not None else 0
     ready = vectorizer.fitted and recipes_indexed > 0
 
+    training_status = getattr(request.app.state, "training_status", None) or {}
+
     return HealthResponse(
         status="ok" if ready else "degraded",
         vectorizerFitted=vectorizer.fitted,
@@ -24,4 +27,7 @@ def healthcheck(request: Request):
             f"{getattr(matcher, 'MODEL_VERSION', 'recipe-match-uninitialized')}+"
             f"{waste_classifier.MODEL_VERSION}"
         ),
+        rankerFitted=ranker.fitted,
+        rankerSamplesSeen=ranker.samples_seen,
+        trainingPipelineStatus=str(training_status.get("status", "unknown")),
     )

@@ -56,11 +56,31 @@ class RecipeOut(BaseModel):
     image: Optional[str] = None
     urgentIngredientsUsed: List[str] = Field(default_factory=list)
     score: float
+    personalRank: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="Personal ranker score when userId was supplied on /recommend (higher = better).",
+    )
+
+
+class RecommendMeta(BaseModel):
+    recommendationId: str
+    pantryCanonicalCount: int
+    urgentCanonicalCount: int
+    candidatePoolSize: int
+    rankerFitted: bool
+    personalizationApplied: bool
+    trainingLastStatus: str
+    vectorizerVersion: str
+    matcherVersion: str
+    rankerVersion: str
 
 
 class RecommendResponse(BaseModel):
     recipes: List[RecipeOut]
     modelVersion: str
+    meta: RecommendMeta
 
 
 class RecipeSuggestionNotification(BaseModel):
@@ -135,3 +155,6 @@ class HealthResponse(BaseModel):
     recipesIndexed: int
     elcsFitted: bool
     modelVersion: str
+    rankerFitted: bool = False
+    rankerSamplesSeen: int = 0
+    trainingPipelineStatus: str = "unknown"

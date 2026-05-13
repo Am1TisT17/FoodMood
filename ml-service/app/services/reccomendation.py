@@ -39,6 +39,15 @@ def canonicalize_pantry(pantry: List[PantryItem]) -> tuple[list[str], list[str],
     return canon_list, urgent, days_left
 
 
+def days_feature_for_ranker(urgent_items: list[str], days_left_by_canonical: dict[str, int]) -> int:
+    """Single urgency scalar fed into the personal ranker (mirrors notification flow)."""
+    if urgent_items:
+        return min(days_left_by_canonical.get(u, 99) for u in urgent_items)
+    if days_left_by_canonical:
+        return min(int(v) for v in days_left_by_canonical.values())
+    return 14
+
+
 def _format_amount(ing: Dict[str, Any]) -> str:
     amount = ing.get("amount")
     if amount is None:
@@ -46,7 +55,12 @@ def _format_amount(ing: Dict[str, Any]) -> str:
     return str(amount)
 
 
-def build_recipe_out(m: MatchResult, pantry_canonical: set[str]) -> RecipeOut:
+def build_recipe_out(
+    m: MatchResult,
+    pantry_canonical: set[str],
+    *,
+    personal_rank: float | None = None,
+) -> RecipeOut:
     raw_ings = m.recipe.get("ingredients") or []
     ingredients_out: list[RecipeIngredientOut] = []
     for ing in raw_ings:
@@ -71,6 +85,7 @@ def build_recipe_out(m: MatchResult, pantry_canonical: set[str]) -> RecipeOut:
         image=m.recipe.get("image"),
         urgentIngredientsUsed=m.urgent_used,
         score=round(m.score, 4),
+        personalRank=round(personal_rank, 6) if personal_rank is not None else None,
     )
 
 

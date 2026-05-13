@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import asyncio
 
 from app.models.pantry_vectorizer import vectorizer
 from app.models.recipe_matcher import RecipeMatcher
@@ -75,11 +76,13 @@ def test_recipe_notifications_focus_on_urgent_item():
         PantryItem(name="Rice", quantity=1, unit="pack", category="Grains"),
     ]
 
-    notifications = build_recipe_suggestion_notifications(
-        matcher,
-        pantry,
-        items_limit=3,
-        recipes_per_item=2,
+    notifications = asyncio.run(
+        build_recipe_suggestion_notifications(
+            matcher,
+            pantry,
+            items_limit=3,
+            recipes_per_item=2,
+        )
     )
 
     assert len(notifications) == 1
@@ -121,6 +124,6 @@ def test_recipe_notifications_return_empty_without_urgent_items():
         PantryItem(name="Pasta", quantity=1, unit="pack", category="Grains"),
     ]
 
-    notifications = build_recipe_suggestion_notifications(matcher, pantry)
+    notifications = asyncio.run(build_recipe_suggestion_notifications(matcher, pantry))
 
     assert notifications == []
