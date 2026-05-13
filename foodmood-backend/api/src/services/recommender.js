@@ -1,21 +1,49 @@
 // Rule-based recipe recommender with expiry-aware urgency ranking.
 // Used as a fallback when ML_SERVICE_URL is not configured or unreachable.
 //
-// The ranking blends:
-//   - ingredientMatch     : fraction of recipe ingredients available in pantry
-//   - expiryUrgencyBoost  : bonus when the recipe uses items that expire soonest
-//   - quickWinBonus       : small bonus for short cookingTime
-//
-// Output shape matches the frontend Recipe interface so the response is drop-in.
+// Matching strategy (improved):
+//   1. Exact normalized name match
+//   2. Token-level match (any meaningful token shared between pantry and ingredient)
+//   3. Substring fallback (one name contained in the other)
+// This handles cases like pantry "Chicken Breast" vs recipe ingredient "Chicken",
+// or pantry "Tomatoes" vs recipe "Cherry Tomato".
 
 import Recipe from '../models/Recipe.js';
 
 function normalize(name) {
   return String(name || '')
     .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, '')
-    .replace(/s$/, '') // very rough singularization
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/s$/, '') // rough singularization
+    .replace(/\s+/g, ' ')
     .trim();
+}
+
+// "stop" tokens that shouldn't drive matches on their own.
+const STOPWORDS = new Set([
+  'fresh', 'organic', 'large', 'small', 'whole', 'raw', 'cooked',
+  'sliced', 'diced', 'chopped', 'red', 'green', 'yellow', 'white',
+  'and', 'or', 'with', 'the',
+]);
+
+function meaningfulTokens(name) {
+  return normalize(name)
+    .split(' ')
+    .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+}
+
+function isMatch(pantryName, ingredientName) {
+  const p = normalize(pantryName);
+  const i = normalize(ingredientName);
+  if (!p || !i) return false;
+  if (p === i) return true;
+  if (p.includes(i) || i.includes(p)) return true;
+  const pTokens = meaningfulTokens(pantryName);
+  const iTokens = meaningfulTokens(ingredientName);
+  for (const t of pTokens) {
+    if (iTokens.includes(t)) return true;
+  }
+  return false;
 }
 
 function daysUntil(date) {
@@ -24,44 +52,43 @@ function daysUntil(date) {
 }
 
 function urgencyScore(daysLeft) {
-  // 0 days = max urgency (1.0); decays to ~0 over a week.
   if (daysLeft <= 0) return 1.0;
   if (daysLeft >= 7) return 0;
   return 1 - daysLeft / 7;
 }
 
 export function rankRecipes(recipes, pantryItems, opts = {}) {
-  const { limit = 12 } = opts;
+  const { limit = 12, dropZeroMatches = true } = opts;
 
-  // Build a pantry index: normalizedName → { item, urgency }
-  const pantryIndex = new Map();
-  for (const it of pantryItems) {
-    const key = normalize(it.name);
-    const urgency = urgencyScore(daysUntil(it.expiryDate));
-    const prev = pantryIndex.get(key);
-    if (!prev || urgency > prev.urgency) {
-      pantryIndex.set(key, { item: it, urgency });
-    }
-  }
+  // Precompute urgency per pantry item.
+  const pantry = pantryItems.map((it) => ({
+    item: it,
+    urgency: urgencyScore(daysUntil(it.expiryDate)),
+  }));
 
   const scored = recipes.map((r) => {
     const total = r.ingredients.length;
     let have = 0;
     let urgencyBoost = 0;
+
     const annotatedIngredients = r.ingredients.map((ing) => {
-      const key = ing.normalizedName || normalize(ing.name);
-      const hit = pantryIndex.get(key);
-      const inPantry = !!hit;
+      // Find the best pantry match (prefer most-urgent).
+      let bestMatch = null;
+      for (const p of pantry) {
+        if (isMatch(p.item.name, ing.name)) {
+          if (!bestMatch || p.urgency > bestMatch.urgency) bestMatch = p;
+        }
+      }
+      const inPantry = !!bestMatch;
       if (inPantry) {
         have += 1;
-        urgencyBoost += hit.urgency;
+        urgencyBoost += bestMatch.urgency;
       }
       return { name: ing.name, amount: ing.amount, inPantry };
     });
 
     const matchRatio = total > 0 ? have / total : 0;
     const quickWin = r.cookingTime <= 20 ? 0.05 : 0;
-    // Composite score in [0, 1.5+]
     const score = matchRatio + urgencyBoost / Math.max(total, 1) + quickWin;
     const matchPercentage = Math.round(matchRatio * 100);
 
@@ -75,16 +102,21 @@ export function rankRecipes(recipes, pantryItems, opts = {}) {
       instructions: r.instructions,
       image: r.image,
       _score: score,
+      _have: have,
     };
   });
 
-  return scored
-    .sort((a, b) => b._score - a._score)
-    .slice(0, limit)
-    .map(({ _score, ...rest }) => rest);
+  let ranked = scored.sort((a, b) => b._score - a._score);
+
+  // If at least one recipe has a real match, drop 0% recipes so we don't pad
+  // with unrelated options. When nothing matches (empty pantry), show top-N anyway.
+  if (dropZeroMatches && ranked.some((r) => r._have > 0)) {
+    ranked = ranked.filter((r) => r._have > 0);
+  }
+
+  return ranked.slice(0, limit).map(({ _score, _have, ...rest }) => rest);
 }
 
-// Convenience helper: load recipes from DB and rank them against the user's pantry.
 export async function recommendForUser(pantryItems, opts) {
   const recipes = await Recipe.find({}).lean();
   return rankRecipes(recipes, pantryItems, opts);

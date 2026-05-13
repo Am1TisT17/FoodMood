@@ -25,3 +25,12 @@ dist-ssr
 
 .env
 .env.local
+
+# Python
+.venv
+**/.venv
+__pycache__
+**/__pycache__
+*.pyc
+ml-service/data/
+*.egg-info

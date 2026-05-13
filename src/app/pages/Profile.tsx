@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Sidebar } from "../components/Sidebar";
 import { BottomNav } from "../components/BottomNav";
 import { useFoodMood } from "../context/FoodMoodContext";
+import { api, auth } from "../../lib/api";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -17,11 +18,11 @@ import { toast } from "sonner";
 
 export function Profile() {
   const navigate = useNavigate();
-  const { userStats } = useFoodMood();
+  const { userName, userStats } = useFoodMood();
 
   const [activeSection, setActiveSection] = useState<"account" | "notifications" | "privacy" | "preferences">("account");
-  const [displayName, setDisplayName] = useState("Alex Johnson");
-  const [email, setEmail] = useState("alex@foodmood.app");
+  const [displayName, setDisplayName] = useState(userName || "");
+  const [email, setEmail] = useState("");
   const [bio, setBio] = useState("Passionate about reducing food waste and sustainable living 🌿");
   const [notifications, setNotifications] = useState({
     expiryAlerts: true,
@@ -33,14 +34,40 @@ export function Profile() {
   const [darkMode, setDarkMode] = useState(false);
   const [language, setLanguage] = useState("English");
 
+  // Pull the current user from the backend once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .me()
+      .then((res) => {
+        if (cancelled) return;
+        setDisplayName(res.user.name);
+        setEmail(res.user.email);
+      })
+      .catch(() => {
+        // Not logged in or token expired — silently degrade.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Keep displayName in sync when context userName updates.
+  useEffect(() => {
+    if (userName && !displayName) setDisplayName(userName);
+  }, [userName]);
+
   const handleSave = () => {
     toast.success("Profile updated successfully!");
   };
 
   const handleLogout = () => {
+    auth.setToken(null);
     toast.info("Logging out...");
-    setTimeout(() => navigate("/"), 800);
+    setTimeout(() => navigate("/"), 600);
   };
+
+  const initial = (displayName.trim()[0] || "G").toUpperCase();
 
   const menuItems = [
     { id: "account", icon: User, label: "Account Info" },
@@ -50,12 +77,12 @@ export function Profile() {
   ] as const;
 
   const achievements = [
-    { icon: "🌿", title: "Waste Warrior", desc: "Saved 100+ kg of food", unlocked: true },
-    { icon: "♻️", title: "Eco Champion", desc: "Offset 50+ kg CO₂", unlocked: true },
-    { icon: "👥", title: "Community Star", desc: "Shared 10+ items", unlocked: true },
+    { icon: "🌿", title: "Waste Warrior", desc: "Saved 100+ kg of food", unlocked: userStats.foodSavedKg >= 100 },
+    { icon: "♻️", title: "Eco Champion", desc: "Offset 50+ kg CO₂", unlocked: userStats.co2Offset >= 50 },
+    { icon: "👥", title: "Community Star", desc: "Shared 10+ items", unlocked: false },
     { icon: "🍳", title: "Master Chef", desc: "Used 50 recipes", unlocked: false },
     { icon: "📱", title: "Scanner Pro", desc: "Scanned 100 receipts", unlocked: false },
-    { icon: "💰", title: "Money Saver", desc: "Saved $500+", unlocked: false },
+    { icon: "💰", title: "Money Saver", desc: "Saved $500+", unlocked: userStats.moneySaved >= 500 },
   ];
 
   return (
@@ -86,14 +113,14 @@ export function Profile() {
               <Card className="p-6 text-center rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
                 <div className="relative w-20 h-20 mx-auto mb-4">
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#B2D2A4] to-[#7FB069] flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-                    A
+                    {initial}
                   </div>
                   <button className="absolute bottom-0 right-0 w-7 h-7 bg-[#4A5568] rounded-full flex items-center justify-center shadow-md hover:bg-[#2D3748] transition-colors">
                     <Camera className="w-3.5 h-3.5 text-white" />
                   </button>
                 </div>
-                <h3 className="font-bold text-[#4A5568] mb-0.5">{displayName}</h3>
-                <p className="text-xs text-[#4A5568]/50 mb-3">{email}</p>
+                <h3 className="font-bold text-[#4A5568] mb-0.5">{displayName || "Guest"}</h3>
+                <p className="text-xs text-[#4A5568]/50 mb-3">{email || "—"}</p>
                 <Badge className="bg-[#B2D2A4]/20 text-[#4A5568] border-[#B2D2A4]/30">
                   Waste Warrior Lvl {userStats.wasteWarriorLevel}
                 </Badge>
@@ -204,14 +231,14 @@ export function Profile() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium text-[#4A5568] mb-1.5 block">Location</label>
-                          <Input defaultValue="New York, NY" className="rounded-xl" />
+                          <Input defaultValue="Almaty, KZ" className="rounded-xl" />
                         </div>
                         <div>
                           <label className="text-sm font-medium text-[#4A5568] mb-1.5 block">Household Size</label>
                           <select className="w-full px-3 py-2 h-10 rounded-xl border border-gray-200 text-sm text-[#4A5568] focus:outline-none focus:ring-2 focus:ring-[#B2D2A4]/30 bg-white">
                             <option>1 person</option>
                             <option>2 people</option>
-                            <option selected>3-4 people</option>
+                            <option>3-4 people</option>
                             <option>5+ people</option>
                           </select>
                         </div>

@@ -4,6 +4,8 @@ import {
   User, BarChart2, Bell, LogOut, Settings
 } from "lucide-react";
 import { cn } from "./ui/utils";
+import { useFoodMood } from "../context/FoodMoodContext";
+import { auth } from "../../lib/api";
 
 const mainNav = [
   { path: "/dashboard", icon: Home, label: "Dashboard" },
@@ -21,6 +23,14 @@ const accountNav = [
 
 export function Sidebar() {
   const navigate = useNavigate();
+  const { userName, userStats } = useFoodMood();
+  const displayName = userName || "Guest";
+  const initial = (displayName.trim()[0] || "G").toUpperCase();
+
+  const handleSignOut = () => {
+    auth.setToken(null);
+    navigate("/");
+  };
 
   return (
     <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 bg-[#1a2332] flex-col shadow-2xl">
@@ -125,16 +135,18 @@ export function Sidebar() {
           onClick={() => navigate("/profile")}
         >
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#B2D2A4] to-[#7FB069] flex items-center justify-center text-white text-sm font-bold shadow-md shadow-[#B2D2A4]/30 flex-shrink-0">
-            A
+            {initial}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white truncate">Alex Johnson</p>
-            <p className="text-xs text-white/35 truncate">Waste Warrior · Lvl 5</p>
+            <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+            <p className="text-xs text-white/35 truncate">
+              Waste Warrior · Lvl {userStats.wasteWarriorLevel}
+            </p>
           </div>
           <User className="w-4 h-4 text-white/30" />
         </div>
         <button
-          onClick={() => navigate("/")}
+          onClick={handleSignOut}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/35 hover:text-white/70 hover:bg-white/6 transition-all text-sm"
         >
           <LogOut className="w-4 h-4" />

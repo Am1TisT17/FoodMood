@@ -1,20 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Sidebar } from "../components/Sidebar";
 import { BottomNav } from "../components/BottomNav";
+import { api } from "../../lib/api";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import {
-  Bell, Clock, Package, ChefHat, Users,
+  Bell, Clock, ChefHat, Users,
   Check, Trash2, Filter, BellOff, TrendingUp
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 
+type BackendType = "expiry_warning" | "expiry_critical" | "recipe_suggestion" | "community" | "system";
+type UIType = "expiry" | "recipe" | "community" | "achievement" | "system";
+
 interface Notification {
   id: string;
-  type: "expiry" | "recipe" | "community" | "achievement" | "system";
+  type: UIType;
   title: string;
   message: string;
   time: string;
@@ -23,88 +27,80 @@ interface Notification {
   actionPath?: string;
 }
 
-const initialNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "expiry",
-    title: "⏰ Expiry Alert",
-    message: "Chicken Breast expires in 1 day. Cook it today to avoid waste!",
-    time: "10 min ago",
-    read: false,
-    actionLabel: "Find Recipes",
-    actionPath: "/recipes",
-  },
-  {
-    id: "2",
-    type: "expiry",
-    title: "⏰ Expiry Warning",
-    message: "Milk expires in 2 days. Consider using it in a smoothie or cooking.",
-    time: "25 min ago",
-    read: false,
-    actionLabel: "View Pantry",
-    actionPath: "/pantry",
-  },
-  {
-    id: "3",
-    type: "community",
-    title: "🤝 New Near You",
-    message: "Sarah M. just listed 2 kg of fresh apples just 400m from you!",
-    time: "1 hour ago",
-    read: false,
-    actionLabel: "View Listing",
-    actionPath: "/community",
-  },
-  {
-    id: "4",
-    type: "recipe",
-    title: "🍳 Recipe Suggestion",
-    message: "You have all the ingredients for Creamy Chicken Pasta — perfect for tonight!",
-    time: "2 hours ago",
-    read: true,
-    actionLabel: "Cook Now",
-    actionPath: "/recipes",
-  },
-  {
-    id: "5",
-    type: "achievement",
-    title: "🏆 Achievement Unlocked!",
-    message: "Congratulations! You've reached Waste Warrior Level 5. You've saved over 100 kg of food!",
-    time: "Yesterday",
-    read: true,
-    actionLabel: "View Profile",
-    actionPath: "/profile",
-  },
-  {
-    id: "6",
-    type: "community",
-    title: "📦 Request Received",
-    message: "John D. is requesting your shared Homemade Bread listing. Confirm pickup details.",
-    time: "Yesterday",
-    read: true,
-    actionLabel: "Respond",
-    actionPath: "/community",
-  },
-  {
-    id: "7",
-    type: "system",
-    title: "📊 Weekly Report Ready",
-    message: "Your weekly sustainability report is ready. You saved 4.2 kg of food this week!",
-    time: "2 days ago",
-    read: true,
-    actionLabel: "View Analytics",
-    actionPath: "/analytics",
-  },
-  {
-    id: "8",
-    type: "expiry",
-    title: "✅ Well Done!",
-    message: "You consumed Yogurt before it expired. You've saved $4.99 and 0.5 kg of CO₂.",
-    time: "3 days ago",
-    read: true,
-  },
-];
+// Map backend → UI types
+function mapType(backendType: BackendType | string): UIType {
+  switch (backendType) {
+    case "expiry_warning":
+    case "expiry_critical":
+      return "expiry";
+    case "recipe_suggestion":
+      return "recipe";
+    case "community":
+      return "community";
+    default:
+      return "system";
+  }
+}
 
-const typeIcons: Record<string, React.ReactNode> = {
+// Add emoji prefix based on backend type
+function decorateTitle(backendType: string, title: string): string {
+  if (title.match(/^[\p{Emoji}]/u)) return title; // already has emoji
+  switch (backendType) {
+    case "expiry_critical":
+      return `⏰ ${title}`;
+    case "expiry_warning":
+      return `⏰ ${title}`;
+    case "recipe_suggestion":
+      return `🍳 ${title}`;
+    case "community":
+      return `🤝 ${title}`;
+    case "system":
+      return `📊 ${title}`;
+    default:
+      return title;
+  }
+}
+
+// Action button per type
+function actionFor(type: UIType): { label: string; path: string } | undefined {
+  switch (type) {
+    case "expiry":
+      return { label: "Find Recipes", path: "/recipes" };
+    case "recipe":
+      return { label: "Cook Now", path: "/recipes" };
+    case "community":
+      return { label: "View Listing", path: "/community" };
+    case "achievement":
+      return { label: "View Profile", path: "/profile" };
+    case "system":
+      return { label: "View Pantry", path: "/pantry" };
+    default:
+      return undefined;
+  }
+}
+
+// Convert ISO timestamp → relative "10 min ago" / "2 hours ago" / "Yesterday"
+function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms)) return "just now";
+  const sec = Math.floor(ms / 1000);
+  if (sec < 60) return "just now";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hour${hr > 1 ? "s" : ""} ago`;
+  const day = Math.floor(hr / 24);
+  if (day === 1) return "Yesterday";
+  if (day < 7) return `${day} days ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+// Live (derived) notifications carry IDs like "expiry-<ObjectId>" — they aren't
+// stored in the notifications collection, so we don't POST /read for them; we
+// just track read state on the client.
+const isEphemeral = (id: string) => id.startsWith("expiry-");
+
+const typeIcons: Record<UIType, React.ReactNode> = {
   expiry: <Clock className="w-4 h-4" />,
   recipe: <ChefHat className="w-4 h-4" />,
   community: <Users className="w-4 h-4" />,
@@ -112,7 +108,7 @@ const typeIcons: Record<string, React.ReactNode> = {
   system: <Bell className="w-4 h-4" />,
 };
 
-const typeColors: Record<string, string> = {
+const typeColors: Record<UIType, string> = {
   expiry: "bg-amber-100 text-amber-600",
   recipe: "bg-[#B2D2A4]/30 text-[#4A5568]",
   community: "bg-blue-100 text-blue-600",
@@ -122,23 +118,74 @@ const typeColors: Record<string, string> = {
 
 export function Notifications() {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { notifications: list } = await api.notifications();
+      const mapped: Notification[] = list.map((n: any) => {
+        const uiType = mapType(n.type);
+        const action = actionFor(uiType);
+        return {
+          id: n.id,
+          type: uiType,
+          title: decorateTitle(n.type, n.title),
+          message: n.body,
+          time: timeAgo(n.createdAt || new Date().toISOString()),
+          read: !!n.read,
+          actionLabel: action?.label,
+          actionPath: action?.path,
+        };
+      });
+      setNotifications(mapped);
+    } catch (err: any) {
+      // Silently fail — show empty state. Auth errors mean user isn't logged in.
+      console.error("[notifications] load failed:", err);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // Auto-refresh every minute so expiry alerts stay current
+    const t = setInterval(load, 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    toast.success("All notifications marked as read");
-  };
-
-  const markRead = (id: string) => {
+  const markRead = async (id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+    if (!isEphemeral(id)) {
+      try {
+        await api.markNotificationRead(id);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const markAllRead = async () => {
+    const toMark = notifications.filter((n) => !n.read);
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    toast.success("All notifications marked as read");
+    await Promise.all(
+      toMark
+        .filter((n) => !isEphemeral(n.id))
+        .map((n) => api.markNotificationRead(n.id).catch(() => null))
     );
   };
 
   const deleteNotification = (id: string) => {
+    // Locally hide it — ephemeral expiry alerts will re-appear next refresh
+    // unless the underlying item is consumed/discarded.
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
@@ -223,7 +270,15 @@ export function Notifications() {
           {/* Notifications list */}
           <div className="space-y-3">
             <AnimatePresence>
-              {filtered.length === 0 ? (
+              {loading ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-16"
+                >
+                  <p className="text-[#4A5568]/50 text-sm">Loading notifications...</p>
+                </motion.div>
+              ) : filtered.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -236,7 +291,7 @@ export function Notifications() {
                   <p className="text-sm text-[#4A5568]/40 mt-1">
                     {filter === "unread"
                       ? "You're all caught up!"
-                      : "Notifications about expiry, recipes, and community will appear here"}
+                      : "Add items to your pantry — alerts about expiring food will appear here automatically"}
                   </p>
                 </motion.div>
               ) : (

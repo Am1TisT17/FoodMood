@@ -2,33 +2,62 @@
 // Input: raw OCR text + per-word confidence (Tesseract result).
 // Output: ScannedItem[] aligned with frontend Scanner.tsx shape:
 //   { name: string, price: string, expiryDate: string, confidence: number }
-//
-// Heuristics:
-//   - A "line item" is a line that ends with a money-like token (e.g. 2.99, 4,50, $3.49).
-//   - Strip leading/trailing non-letters from the name.
-//   - Skip noise lines (totals, taxes, dates, store header).
-//   - Estimate expiry: 7 days from "today" by default, with category-aware overrides.
 
 const NOISE = [
+  // Totals & taxes
   /total/i,
   /subtotal/i,
   /tax\b/i,
   /vat\b/i,
   /change/i,
-  /cash/i,
-  /card/i,
-  /receipt/i,
-  /thank you/i,
   /balance/i,
   /tender/i,
+
+  // Payment methods & card processing
+  /\bvisa\b/i,
+  /master\s*card/i,
+  /\bmc\b/i,
+  /amex/i,
+  /american\s*express/i,
+  /\bdebit\b/i,
+  /\bcredit\b/i,
+  /\bdiscover\b/i,
+  /\bcash\b/i,
+  /\bcard\b/i,
+  /\bauth\b/i,
+  /approved/i,
+  /\bapp\s*r\b/i,
+  /ref\s*#/i,
+  /\bref\b\s*\d/i,
+  /payment/i,
+  /\btip\b/i,
+  /\bcustomer\s*copy\b/i,
+  /\bmerchant\s*copy\b/i,
+  /\bsignature\b/i,
+  /\bterminal\b/i,
+  /\bbatch\b/i,
+  /\bsequence\b/i,
+
+  // Store / header
+  /receipt/i,
+  /thank you/i,
+  /thanks for/i,
   /tel\b/i,
   /tel:/i,
   /www\./i,
-  /^\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/, // dates
-  /\b\d{4,}\b\s*$/, // pure barcode-like trailing numbers
+  /\.com\b/i,
+  /\bstore\s*#/i,
+  /cashier/i,
+
+  // Dates & barcodes
+  /^\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/,
+  /\b\d{4,}\b\s*$/,
+
+  // Number lines (counts, item counts at the end)
+  /^items?\s+sold/i,
+  /^\s*\d+\s+items?\b/i,
 ];
 
-// Approx shelf life from purchase, in days, for common categories.
 const DEFAULT_SHELF_LIFE = {
   Dairy: 7,
   Meat: 3,
@@ -42,14 +71,13 @@ const DEFAULT_SHELF_LIFE = {
   Other: 7,
 };
 
-// Tiny keyword→category classifier — good enough for receipts.
 const CATEGORY_KEYWORDS = {
   Dairy: ['milk', 'cheese', 'yogurt', 'yoghurt', 'butter', 'cream', 'kefir'],
   Meat: ['chicken', 'beef', 'pork', 'turkey', 'sausage', 'ham', 'bacon', 'mince', 'lamb'],
   Veggies: ['tomato', 'cucumber', 'spinach', 'lettuce', 'carrot', 'onion', 'potato', 'pepper', 'broccoli', 'cabbage'],
-  Fruits: ['apple', 'banana', 'orange', 'grape', 'berry', 'lemon', 'pear', 'peach'],
-  Bakery: ['bread', 'bun', 'roll', 'baguette', 'pastry', 'croissant'],
-  Grains: ['rice', 'pasta', 'noodle', 'oat', 'flour', 'quinoa'],
+  Fruits: ['apple', 'banana', 'orange', 'grape', 'berry', 'lemon', 'pear', 'peach', 'strawberry', 'blueberry'],
+  Bakery: ['bread', 'bun', 'roll', 'baguette', 'pastry', 'croissant', 'bagel'],
+  Grains: ['rice', 'pasta', 'noodle', 'oat', 'flour', 'quinoa', 'cereal'],
   Pantry: ['oil', 'vinegar', 'sugar', 'salt', 'sauce', 'spice', 'beans', 'canned'],
   Frozen: ['frozen', 'ice cream'],
   Beverages: ['juice', 'cola', 'water', 'tea', 'coffee', 'soda'],
@@ -63,19 +91,55 @@ function classifyCategory(name) {
   return 'Other';
 }
 
-const MONEY_RE = /([0-9]{1,4}[.,][0-9]{2})\s*\$?\s*$/;
+const TOTAL_PRICE_RE = /([0-9]{1,4}[.,][0-9]{2})\s*\$?\s*$/;
+const UNIT_TOKENS = '(?:lb|1b|ib|lbs|oz|g|kg|kgs|gr|gms|ml|mls|l|gal|gals|qt|qts|pt|pts)';
+
+const NAME_STRIPPERS = [
+  /\$\s*\d+([.,]\d{1,2})?/g,
+  new RegExp('\\/\\s*\\d*\\s*' + UNIT_TOKENS + '\\b', 'gi'),
+  new RegExp('\\b\\d+(?:[.,]\\d+)?\\s*' + UNIT_TOKENS + '\\b', 'gi'),
+  /\([^)]*\)/g,
+  /\s+@\s*/g,
+  /[*#@~|]+/g,
+  /\s+\d+(?:[.,]\d+)?\s*(?=\s|$)/g,
+];
 
 function isNoise(line) {
   return NOISE.some((re) => re.test(line));
 }
 
+// Heuristic to detect OCR garbage. A line is "garbage" when after cleaning:
+//   - too many runs of repeated identical letters (e.g. "kkkk"),
+//   - vowel ratio is implausibly low (real product names have vowels),
+//   - too many lone letters separated by spaces ("k m d x").
+function looksLikeGarbage(name) {
+  const letters = name.replace(/[^a-zA-Z]/g, '');
+  if (letters.length < 3) return true;
+
+  // 3+ consecutive identical letters → very rare in real words
+  if (/([a-zA-Z])\1{2,}/i.test(name)) return true;
+
+  // Very low vowel ratio
+  const vowels = letters.match(/[aeiouy]/gi)?.length || 0;
+  if (vowels / letters.length < 0.15) return true;
+
+  // Many 1- and 2-char tokens suggests OCR noise like "k m d x"
+  const tokens = name.split(/\s+/).filter(Boolean);
+  if (tokens.length >= 3) {
+    const tiny = tokens.filter((t) => t.replace(/[^a-zA-Z]/g, '').length <= 2).length;
+    if (tiny / tokens.length > 0.5) return true;
+  }
+
+  return false;
+}
+
 function cleanName(raw) {
-  return raw
-    .replace(MONEY_RE, '')
-    .replace(/[*#@~|]+/g, '')
+  let s = raw.replace(TOTAL_PRICE_RE, '');
+  for (const re of NAME_STRIPPERS) s = s.replace(re, ' ');
+  return s
     .replace(/\s{2,}/g, ' ')
     .replace(/^[^a-zA-Z]+/, '')
-    .replace(/[^a-zA-Z0-9 ]+$/, '')
+    .replace(/[^a-zA-Z0-9\s]+$/, '')
     .trim();
 }
 
@@ -86,9 +150,6 @@ function defaultExpiryFor(category, baseDate = new Date()) {
   return d.toISOString().split('T')[0];
 }
 
-// Tesseract gives us per-line confidence. We blend line confidence with
-// "structure confidence" (does the line look like an item?) to produce
-// a single 0–100 score matching the frontend's `confidence` field.
 function structureConfidence(name, priceMatched) {
   let score = 0;
   if (priceMatched) score += 40;
@@ -99,12 +160,10 @@ function structureConfidence(name, priceMatched) {
   return score;
 }
 
-export function parseReceipt(ocrResult, opts = {}) {
-  const { defaultExpiryOffsetDays = 7 } = opts;
+export function parseReceipt(ocrResult) {
   const text = ocrResult.data?.text || '';
   const lines = text.split(/\r?\n/);
 
-  // Build a line→avgConfidence map from word-level data when available.
   const lineConfidence = {};
   for (const w of ocrResult.data?.words || []) {
     const ln = w.line?.text || '';
@@ -119,12 +178,14 @@ export function parseReceipt(ocrResult, opts = {}) {
     if (!line || line.length < 3) continue;
     if (isNoise(line)) continue;
 
-    const priceMatch = line.match(MONEY_RE);
+    const priceMatch = line.match(TOTAL_PRICE_RE);
     if (!priceMatch) continue;
     const price = priceMatch[1].replace(',', '.');
 
     const name = cleanName(line);
     if (!name || name.length < 2) continue;
+    if (!/[a-zA-Z]/.test(name)) continue;
+    if (looksLikeGarbage(name)) continue;
 
     const lineConfData = lineConfidence[rawLine] || lineConfidence[line];
     const ocrConf = lineConfData ? lineConfData.sum / lineConfData.count : 75;
@@ -139,7 +200,6 @@ export function parseReceipt(ocrResult, opts = {}) {
       price,
       expiryDate,
       confidence: Math.min(99, Math.max(40, confidence)),
-      // Hints for backend — frontend ignores extra fields safely.
       category,
       quantity: 1,
       unit: 'pcs',

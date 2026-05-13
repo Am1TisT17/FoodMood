@@ -19,8 +19,15 @@ export const env = {
   JWT_SECRET: required('JWT_SECRET', 'dev-only-secret-change-me'),
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   OCR_SERVICE_URL: process.env.OCR_SERVICE_URL || 'http://localhost:4100',
+
+  // ML microservice (team-mate's recipe recommender). Optional.
   ML_SERVICE_URL: process.env.ML_SERVICE_URL || '',
   ML_TIMEOUT_MS: parseInt(process.env.ML_TIMEOUT_MS || '5000', 10),
+
+  // Spoonacular external recipe API (free tier, optional).
+  SPOONACULAR_API_KEY: process.env.SPOONACULAR_API_KEY || '',
+  SPOONACULAR_TIMEOUT_MS: parseInt(process.env.SPOONACULAR_TIMEOUT_MS || '8000', 10),
+
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
   RATE_LIMIT_MAX: parseInt(process.env.RATE_LIMIT_MAX || '300', 10),
 };
