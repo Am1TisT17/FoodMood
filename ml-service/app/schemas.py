@@ -63,6 +63,22 @@ class RecommendResponse(BaseModel):
     modelVersion: str
 
 
+class RecipeSuggestionNotification(BaseModel):
+    id: str
+    type: str = "recipe_suggestion"
+    title: str
+    body: str
+    itemName: str
+    canonicalName: str
+    daysToExpiry: int
+    recipes: List[RecipeOut]
+
+
+class RecipeSuggestionNotificationsResponse(BaseModel):
+    notifications: List[RecipeSuggestionNotification]
+    modelVersion: str
+
+
 # OCR confirmation feedback
 
 class ReceiptItem(BaseModel):

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import close_client
 from .models.recipe_matcher import RecipeMatcher
-from .routes import health, insights, receipts, recommend, train
+from .routes import health, insights, notifications, receipts, recommend, train
 from .services.training import retrain_pipeline
 
 
@@ -68,6 +68,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(recommend.router)
+app.include_router(notifications.router)
 app.include_router(receipts.router)
 app.include_router(train.router)
 app.include_router(insights.router)
