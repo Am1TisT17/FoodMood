@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     fooditems_collection: str = "fooditems"
     recipes_collection: str = "recipes"
     users_collection: str = "users"
+    feedback_collection: str = "recipe_feedback"
 
     internal_api_key: str = "change-me"
 

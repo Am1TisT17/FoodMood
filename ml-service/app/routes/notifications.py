@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from ..auth import verify_internal_key
 from ..models.pantry_vectorizer import vectorizer
+from ..models.personal_ranker import ranker
 from ..schemas import RecipeSuggestionNotificationsResponse
 from ..services.notifications import (
     build_recipe_suggestion_notifications,
@@ -27,16 +28,18 @@ async def get_recipe_suggestions(
     pantry = await load_active_pantry(user_id)
 
     try:
-        notifications = build_recipe_suggestion_notifications(
+        notifications = await build_recipe_suggestion_notifications(
             matcher,
             pantry,
+            user_id=user_id,
             items_limit=items_limit,
             recipes_per_item=recipes_per_item,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
+    ranker_tag = "ranker-on" if ranker.fitted else "ranker-cold"
     return RecipeSuggestionNotificationsResponse(
         notifications=notifications,
-        modelVersion=f"{vectorizer.MODEL_VERSION}+{matcher.MODEL_VERSION}",
+        modelVersion=f"{vectorizer.MODEL_VERSION}+{matcher.MODEL_VERSION}+{ranker_tag}",
     )

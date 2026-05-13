@@ -9,7 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import close_client
 from .models.recipe_matcher import RecipeMatcher
-from .routes import health, insights, notifications, receipts, recommend, train
+from .routes import feedback, health, insights, notifications, receipts, recommend, train
+from .services.ranker_training import train_personal_ranker
 from .services.training import retrain_pipeline
 
 
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
         "users": 0,
         "elcs_samples": 0,
     }
+    app.state.ranker_status = {"status": "not_started"}
 
     if settings.auto_train_on_start:
         try:
@@ -45,6 +47,14 @@ async def lifespan(app: FastAPI):
                 "elcs_samples": 0,
             }
             log.exception("Auto-training failed; service will return 503 until trained")
+
+        # Ranker training is independent and silent on empty feedback
+        try:
+            app.state.ranker_status = await train_personal_ranker()
+            log.info("Ranker auto-training finished: %s", app.state.ranker_status)
+        except Exception as exc:
+            app.state.ranker_status = {"status": "failed", "error": str(exc)}
+            log.exception("Ranker auto-training failed; will fall back to matcher score")
 
     try:
         yield
@@ -72,3 +82,4 @@ app.include_router(notifications.router)
 app.include_router(receipts.router)
 app.include_router(train.router)
 app.include_router(insights.router)
+app.include_router(feedback.router)
