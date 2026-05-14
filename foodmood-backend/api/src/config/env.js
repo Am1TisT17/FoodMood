@@ -23,6 +23,9 @@ export const env = {
   // ML microservice (team-mate's recipe recommender). Optional.
   ML_SERVICE_URL: process.env.ML_SERVICE_URL || '',
   ML_TIMEOUT_MS: parseInt(process.env.ML_TIMEOUT_MS || '5000', 10),
+  // Shared secret for ML's protected endpoints (/feedback, /train,
+  // /notifications/recipe-suggestions). Must match ML's INTERNAL_API_KEY.
+  ML_INTERNAL_API_KEY: process.env.ML_INTERNAL_API_KEY || 'change-me',
 
   // Spoonacular external recipe API (free tier, optional).
   SPOONACULAR_API_KEY: process.env.SPOONACULAR_API_KEY || '',

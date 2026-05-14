@@ -5,7 +5,7 @@ import FoodItem from '../models/FoodItem.js';
 import { authRequired } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { recommendForUser, rankRecipes } from '../services/recommender.js';
-import { recommendFromML, isMlConfigured } from '../services/mlClient.js';
+import { recommendFromML, isMlConfigured, sendMlFeedback, triggerMlTrain } from '../services/mlClient.js';
 import {
   findRecipesByIngredients,
   hydrateRecipeDetails,
@@ -35,7 +35,6 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   let r = await Recipe.findById(req.params.id);
   if (!r) return res.status(404).json({ error: 'Recipe not found' });
-  // Lazy-fetch Spoonacular details on first detail view.
   if (isSpoonacularConfigured() && (r.instructions || []).length === 0) {
     r = await hydrateRecipeDetails(r);
   }
@@ -53,27 +52,39 @@ router.get('/:id', async (req, res) => {
 });
 
 // Recommendation fallback chain:
-//   1. ML microservice (team-mate's service), if configured
-//   2. Spoonacular external API, if configured
+//   1. ML microservice — personalized when userId is supplied (returns meta + personalRank)
+//   2. Spoonacular external API
 //   3. Local rule-based ranker (always available)
-async function getRecommendations(pantry, limit) {
+async function getRecommendations(pantry, limit, userId) {
   if (isMlConfigured()) {
-    const ml = await recommendFromML(pantry, { limit });
-    if (ml && ml.length > 0) return { recipes: ml, source: 'ml' };
+    const ml = await recommendFromML(pantry, { limit, userId });
+    if (ml && ml.recipes && ml.recipes.length > 0) {
+      return {
+        recipes: ml.recipes,
+        source: 'ml',
+        meta: ml.meta,
+        modelVersion: ml.modelVersion,
+      };
+    }
   }
   if (isSpoonacularConfigured()) {
     const sp = await findRecipesByIngredients(pantry, { limit });
-    if (sp && sp.length > 0) return { recipes: sp, source: 'spoonacular' };
+    if (sp && sp.length > 0) return { recipes: sp, source: 'spoonacular', meta: null };
   }
   const local = await recommendForUser(pantry, { limit });
-  return { recipes: local, source: 'rule-based' };
+  return { recipes: local, source: 'rule-based', meta: null };
 }
 
 router.get('/recommend/me', authRequired, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit || '12', 10), 25);
   const pantry = await FoodItem.find({ user: req.userId, status: 'active' }).lean();
-  const { recipes, source } = await getRecommendations(pantry, limit);
-  res.json({ recipes, source });
+  const result = await getRecommendations(pantry, limit, req.userId);
+  res.json({
+    recipes: result.recipes,
+    source: result.source,
+    meta: result.meta || null,
+    modelVersion: result.modelVersion || null,
+  });
 });
 
 router.post(
@@ -88,6 +99,8 @@ router.post(
             quantity: z.number().optional(),
             unit: z.string().optional(),
             expiryDate: z.string().optional(),
+            category: z.string().optional(),
+            price: z.number().optional(),
           })
         )
         .optional(),
@@ -100,18 +113,50 @@ router.post(
         ? req.body.pantry
         : await FoodItem.find({ user: req.userId, status: 'active' }).lean();
     const limit = req.body.limit || 12;
-    const { recipes, source } = await getRecommendations(pantry, limit);
-    // For an explicit pantry snapshot we may want the user to see the local
-    // ranker too — but keeping the same chain for consistency.
-    if (source === 'rule-based' && req.body.pantry?.length) {
-      const all = await Recipe.find({}).lean();
-      return res.json({ recipes: rankRecipes(all, pantry, { limit }), source: 'rule-based' });
-    }
-    res.json({ recipes, source });
+    const result = await getRecommendations(pantry, limit, req.userId);
+    res.json({
+      recipes: result.recipes,
+      source: result.source,
+      meta: result.meta || null,
+      modelVersion: result.modelVersion || null,
+    });
   }
 );
 
-// Marking a recipe as cooked: consumes matching pantry items.
+// Recipe interaction feedback — forwarded to ML's personal ranker.
+// Frontend calls this on view / cook / dismiss / like so the ranker can learn.
+router.post(
+  '/:id/feedback',
+  authRequired,
+  validate({
+    body: z.object({
+      action: z.enum(['view', 'cook', 'dismiss', 'like']),
+      scoreShown: z.number().optional(),
+      daysToExpiry: z.number().int().optional(),
+      canonicalTarget: z.string().optional(),
+    }),
+  }),
+  async (req, res) => {
+    // Fire-and-forget — never block the UI on ML availability.
+    sendMlFeedback({
+      userId: req.userId.toString(),
+      recipeId: req.params.id,
+      action: req.body.action,
+      canonicalTarget: req.body.canonicalTarget,
+      scoreShown: req.body.scoreShown,
+      daysToExpiry: req.body.daysToExpiry,
+    });
+    res.json({ ok: true });
+  }
+);
+
+// Admin: trigger a full ML retrain (e.g. after seeding). Best-effort.
+router.post('/retrain', authRequired, async (req, res) => {
+  const status = await triggerMlTrain();
+  res.json({ ok: !!status, status });
+});
+
+// Marking a recipe as cooked: consumes matching pantry items + sends 'cook' feedback.
 router.post('/:id/use', authRequired, async (req, res) => {
   const recipe = await Recipe.findById(req.params.id).lean();
   if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
@@ -147,6 +192,14 @@ router.post('/:id/use', authRequired, async (req, res) => {
     }
   }
   await req.user.save();
+
+  // Tell the ML ranker the user actually cooked this recipe.
+  sendMlFeedback({
+    userId: req.userId.toString(),
+    recipeId: req.params.id,
+    action: 'cook',
+  });
+
   res.json({ ok: true, consumed, stats: req.user.stats });
 });
 
