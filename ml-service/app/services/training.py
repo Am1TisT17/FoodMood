@@ -10,8 +10,9 @@ from ..preprocessing.normalizer import canonical_ingredient
 from ..models.pantry_vectorizer import vectorizer
 from ..models.recipe_matcher import RecipeMatcher
 from ..models.elcs_classifier import waste_classifier
+from ..models.edibility_classifier import edibility_classifier
 from .feature_builder import build_outcome_samples
-from .receipt_feedback import load_receipt_fooditems
+from .receipt_feedback import load_receipt_fooditems, load_receipt_rejections
 
 log = logging.getLogger(__name__)
 
@@ -68,6 +69,23 @@ async def retrain_pipeline(matcher: RecipeMatcher) -> dict:
         len(receipt_food_items),
         len(recipes_raw),
     )
+
+    # Train EdibilityClassifier
+    food_names = [item.get("name", "") for item in food_items if item.get("name")]
+    rejected_names = load_receipt_rejections()
+    
+    # Generate some hardcoded synthetic negative samples in case receipt feedback is empty
+    synthetic_negatives = [
+        "battery", "soap", "shampoo", "paper towel", "toilet paper", "receipt", "bag",
+        "detergent", "toothpaste", "bleach", "sponge", "cleaner", "napkins", "trash bags",
+        "plastic wrap", "foil", "light bulb", "pet food", "dog food", "cat food", "lotion",
+        "deodorant", "razor", "shaving cream", "diapers", "wipes", "magazine", "gift card"
+    ]
+    negative_names = list(set(rejected_names + synthetic_negatives))
+
+    X_clf = food_names + negative_names
+    y_clf = [True] * len(food_names) + [False] * len(negative_names)
+    edibility_classifier.fit(X_clf, y_clf)
 
     user_pantries = _aggregate_user_pantries(food_items)
     if not user_pantries:

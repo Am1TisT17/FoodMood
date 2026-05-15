@@ -184,3 +184,23 @@ export async function confirmReceiptWithML(payload) {
     return null;
   }
 }
+
+// POST /receipts/filter — filter out non-food items using ML classifier. Returns filtered items JSON or null.
+export async function filterReceiptItemsWithML(parsedItems) {
+  if (!isMlConfigured() || !parsedItems || parsedItems.length === 0) return null;
+  try {
+    const res = await withTimeout(
+      fetch(mlUrl('/receipts/filter'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parsedItems }),
+      }),
+      env.ML_TIMEOUT_MS * 2
+    );
+    if (!res.ok) throw new Error(`ML /receipts/filter returned ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('[ml] /receipts/filter failed:', err.message);
+    return null;
+  }
+}

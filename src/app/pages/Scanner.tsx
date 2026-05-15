@@ -34,15 +34,19 @@ export function Scanner() {
   const handleFile = async (file: File) => {
     setScanning(true);
     try {
-      const { items: parsed } = await api.scanReceipt(file);
-      if (!parsed || parsed.length === 0) {
-        toast.error("Couldn't read any items from the receipt. Try a clearer photo.");
+      const parsed = await api.scanReceipt(file);
+      if (!parsed || !parsed.items || parsed.items.length === 0) {
+        toast.error("Couldn't read any food items from the receipt. Try a clearer photo.");
         setScanning(false);
         return;
       }
-      setItems(parsed);
+      setItems(parsed.items || []);
       setScanned(true);
-      toast.success(`Receipt scanned — found ${parsed.length} items`);
+      if (parsed.filteredOutCount > 0) {
+        toast.success(`Receipt scanned. AI filtered out ${parsed.filteredOutCount} non-food item(s) automatically.`);
+      } else {
+        toast.success(`Receipt scanned — found ${parsed.items?.length || 0} items`);
+      }
     } catch (err: any) {
       toast.error(err?.message || "Scan failed");
     } finally {

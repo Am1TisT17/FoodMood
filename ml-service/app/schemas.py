@@ -133,6 +133,20 @@ class ReceiptConfirmationResponse(BaseModel):
     trainingStatus: Optional[dict] = None
 
 
+class FilteredReceiptItem(ReceiptItem):
+    isFood: bool
+    confidence: float
+
+
+class ReceiptFilterRequest(BaseModel):
+    parsedItems: List[ReceiptItem] = Field(..., min_length=1)
+
+
+class ReceiptFilterResponse(BaseModel):
+    filteredItems: List[FilteredReceiptItem]
+    rejectedItems: List[FilteredReceiptItem]
+
+
 # rule mining (eLCS)
 
 class InsightRule(BaseModel):

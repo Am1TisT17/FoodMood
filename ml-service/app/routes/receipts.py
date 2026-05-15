@@ -1,9 +1,16 @@
 from fastapi import APIRouter, Request
 
 from ..config import settings
-from ..schemas import ReceiptConfirmationRequest, ReceiptConfirmationResponse
+from ..schemas import (
+    ReceiptConfirmationRequest,
+    ReceiptConfirmationResponse,
+    ReceiptFilterRequest,
+    ReceiptFilterResponse,
+    FilteredReceiptItem,
+)
 from ..services.receipt_feedback import save_receipt_confirmation
 from ..services.training import retrain_pipeline
+from ..models.edibility_classifier import edibility_classifier
 
 
 router = APIRouter(tags=["receipts"])
@@ -29,4 +36,25 @@ async def confirm_receipt_feedback(payload: ReceiptConfirmationRequest, request:
         rejectedNames=[item.name for item in rejected],
         trainingTriggered=training_triggered,
         trainingStatus=training_status,
+    )
+
+
+@router.post("/receipts/filter", response_model=ReceiptFilterResponse)
+async def filter_receipt_items(payload: ReceiptFilterRequest):
+    names = [item.name for item in payload.parsedItems]
+    predictions = edibility_classifier.predict(names)
+    
+    filtered_items = []
+    rejected_items = []
+    
+    for item, (is_food, conf) in zip(payload.parsedItems, predictions):
+        f_item = FilteredReceiptItem(**item.model_dump(), isFood=is_food, confidence=conf)
+        if is_food:
+            filtered_items.append(f_item)
+        else:
+            rejected_items.append(f_item)
+            
+    return ReceiptFilterResponse(
+        filteredItems=filtered_items,
+        rejectedItems=rejected_items,
     )

@@ -85,3 +85,26 @@ def load_receipt_fooditems() -> list[dict[str, Any]]:
                     "source": "receipt_feedback",
                 })
     return out
+
+
+def load_receipt_rejections() -> list[str]:
+    path = Path(settings.receipt_feedback_path)
+    if not path.exists():
+        return []
+
+    out: list[str] = []
+    with path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            for item in record.get("rejectedNonFoodItems") or []:
+                name = item.get("name", "").strip()
+                if name:
+                    out.append(name)
+    return out
