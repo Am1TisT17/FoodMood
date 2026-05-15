@@ -1,0 +1,33 @@
+name,is_food
+шампунь,0
+бритва,0
+мыло,0
+зубная паста,0
+туалетная бумага,0
+батарейки,0
+порошок,0
+молоко,1
+хлеб,1
+яйцо,1
+соль,1
+сахар,1
+курица,1
+мясо,1
+сыр,1
+вода,1
+shampoo,0
+razor,0
+soap,0
+toothpaste,0
+toilet paper,0
+battery,0
+detergent,0
+milk,1
+bread,1
+egg,1
+salt,1
+sugar,1
+chicken,1
+meat,1
+cheese,1
+water,1

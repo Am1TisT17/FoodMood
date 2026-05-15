@@ -1,9 +1,11 @@
-"""recipe matcher: cosine similarity + coverage + urgency-aware boost"""
+"""recipe matcher: cosine similarity + coverage + urgency-aware boost + ingredient priority"""
 from __future__ import annotations
 from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass
 import logging
 import numpy as np
+import csv
+import os
 from sklearn.metrics.pairwise import cosine_similarity
 
 from .pantry_vectorizer import vectorizer
@@ -22,15 +24,29 @@ class MatchResult:
 
 
 class RecipeMatcher:
-    MODEL_VERSION = "recipe-match-1.1"
+    MODEL_VERSION = "recipe-match-1.2"
 
     W_COSINE = 1.0
     W_COVERAGE = 0.6
     W_URGENT = 0.4
+    W_PRIORITY = 0.1
 
     def __init__(self) -> None:
         self._recipe_matrix = None
         self._recipes: List[Dict[str, Any]] = []
+        self._ingredient_priorities: Dict[str, float] = {}
+        self._load_priorities()
+
+    def _load_priorities(self) -> None:
+        dataset_path = os.path.join(os.path.dirname(__file__), "..", "data", "ingredient_priority.csv")
+        if os.path.exists(dataset_path):
+            with open(dataset_path, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    self._ingredient_priorities[row["ingredient"].lower()] = float(row["priority_weight"])
+            log.info("Loaded %d ingredient priorities", len(self._ingredient_priorities))
+        else:
+            log.warning("Ingredient priority dataset not found at %s", dataset_path)
 
     @property
     def size(self) -> int:
@@ -48,6 +64,9 @@ class RecipeMatcher:
         self._recipe_matrix = vectorizer.underlying().transform(docs)
         self._recipes = recipes
         log.info("RecipeMatcher indexed %d recipes", len(recipes))
+
+    def get_priority(self, ingredient: str) -> float:
+        return self._ingredient_priorities.get(ingredient.lower(), 0.0)
 
     def match(
         self,
@@ -70,13 +89,20 @@ class RecipeMatcher:
             recipe_set = set(recipe["canonical_ingredients"])
             if not recipe_set:
                 continue
-            matched = sorted(recipe_set & pantry_set)
-            urgent_used = sorted(recipe_set & urgent_set)
+            
+            # Matched ingredients sorted by priority first (descending), then alphabetically
+            matched = sorted(list(recipe_set & pantry_set), key=lambda x: (-self.get_priority(x), x))
+            urgent_used = sorted(list(recipe_set & urgent_set), key=lambda x: (-self.get_priority(x), x))
             coverage = len(matched) / len(recipe_set)
 
             score = self.W_COSINE * float(cos[idx]) + self.W_COVERAGE * coverage
             if urgent_used:
                 score += self.W_URGENT * min(len(urgent_used) / 3.0, 1.0)
+                
+            # Boost score based on priorities of matched ingredients
+            priority_boost = sum(self.get_priority(item) for item in matched)
+            # Normalize boost assuming max priority per item is ~10 and max items ~10, dividing by 100
+            score += self.W_PRIORITY * (priority_boost / 100.0)
 
             if score < min_score:
                 continue

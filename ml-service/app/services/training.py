@@ -1,6 +1,8 @@
 """training pipeline: loads FoodItems + Recipes from MongoDB, fits TF-IDF, indexes recipes, mines eLCS rules"""
 from __future__ import annotations
 import logging
+import csv
+import os
 from collections import defaultdict
 from typing import List, Dict, Any
 
@@ -74,6 +76,17 @@ async def retrain_pipeline(matcher: RecipeMatcher) -> dict:
     food_names = [item.get("name", "") for item in food_items if item.get("name")]
     rejected_names = load_receipt_rejections()
     
+    # Load custom dataset
+    csv_names = []
+    csv_labels = []
+    dataset_path = os.path.join(os.path.dirname(__file__), "..", "data", "edibility_dataset.csv")
+    if os.path.exists(dataset_path):
+        with open(dataset_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                csv_names.append(row["name"])
+                csv_labels.append(bool(int(row["is_food"])))
+    
     # Generate some hardcoded synthetic negative samples in case receipt feedback is empty
     synthetic_negatives = [
         "battery", "soap", "shampoo", "paper towel", "toilet paper", "receipt", "bag",
@@ -83,8 +96,8 @@ async def retrain_pipeline(matcher: RecipeMatcher) -> dict:
     ]
     negative_names = list(set(rejected_names + synthetic_negatives))
 
-    X_clf = food_names + negative_names
-    y_clf = [True] * len(food_names) + [False] * len(negative_names)
+    X_clf = food_names + negative_names + csv_names
+    y_clf = [True] * len(food_names) + [False] * len(negative_names) + csv_labels
     edibility_classifier.fit(X_clf, y_clf)
 
     user_pantries = _aggregate_user_pantries(food_items)
