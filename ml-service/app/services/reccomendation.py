@@ -74,6 +74,18 @@ def build_recipe_out(
 
     match_pct = round(m.coverage * 100)
 
+    # Generate ML Insight
+    ml_insight = None
+    if m.urgent_used:
+        item_names = ", ".join(m.urgent_used[:2])
+        if len(m.urgent_used) > 2:
+            item_names += f" and {len(m.urgent_used) - 2} more"
+        ml_insight = f"🚨 Saves expiring items: {item_names}"
+    elif personal_rank is not None and personal_rank > 0.8:
+        ml_insight = "✨ Highly recommended for your taste"
+    elif match_pct >= 80:
+        ml_insight = f"🎯 Excellent pantry match ({match_pct}%)"
+
     return RecipeOut(
         id=str(m.recipe.get("_id")),
         name=m.recipe.get("name") or "",
@@ -86,6 +98,7 @@ def build_recipe_out(
         urgentIngredientsUsed=m.urgent_used,
         score=round(m.score, 4),
         personalRank=round(personal_rank, 6) if personal_rank is not None else None,
+        mlInsight=ml_insight,
     )
 
 

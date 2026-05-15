@@ -83,6 +83,26 @@ const CATEGORY_KEYWORDS = {
   Beverages: ['juice', 'cola', 'water', 'tea', 'coffee', 'soda'],
 };
 
+const NON_FOOD_KEYWORDS = [
+  'shampoo', 'soap', 'body wash', 'shower gel', 'lotion', 'cream', 'deodorant',
+  'toothpaste', 'toothbrush', 'razor', 'shaving', 'diaper', 'pampers', 'wipes',
+  'detergent', 'softener', 'bleach', 'cleaner', 'spray', 'sponge', 'dish',
+  'toilet', 'paper', 'tissue', 'napkin', 'towel',
+  'battery', 'batteries', 'bulb', 'glue', 'tape',
+  'foil', 'wrap', 'trash', 'bag', 'bags',
+  'cat food', 'dog food', 'pet food', 'whiskas', 'pedigree',
+  'fairy', 'tide', 'ariel', 'bref', 'domestos', 'persil',
+  'шампунь', 'мыло', 'гель', 'порошок', 'кондиционер', 'отбеливатель',
+  'памперсы', 'подгузники', 'прокладки', 'салфетки', 'бумага',
+  'батарейки', 'лампочка', 'губка', 'пакет', 'мешки', 'пленка', 'фольга',
+  'корм', 'кошачий', 'собачий'
+];
+
+function isNonFood(name) {
+  const lower = name.toLowerCase();
+  return NON_FOOD_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
 function classifyCategory(name) {
   const lower = name.toLowerCase();
   for (const [cat, kws] of Object.entries(CATEGORY_KEYWORDS)) {
@@ -138,8 +158,8 @@ function cleanName(raw) {
   for (const re of NAME_STRIPPERS) s = s.replace(re, ' ');
   return s
     .replace(/\s{2,}/g, ' ')
-    .replace(/^[^a-zA-Z]+/, '')
-    .replace(/[^a-zA-Z0-9\s]+$/, '')
+    .replace(/^[^a-zA-Zа-яА-ЯёЁ]+/, '')
+    .replace(/[^a-zA-Zа-яА-ЯёЁ0-9\s]+$/, '')
     .trim();
 }
 
@@ -184,8 +204,9 @@ export function parseReceipt(ocrResult) {
 
     const name = cleanName(line);
     if (!name || name.length < 2) continue;
-    if (!/[a-zA-Z]/.test(name)) continue;
+    if (!/[a-zA-Zа-яА-ЯёЁ]/.test(name)) continue;
     if (looksLikeGarbage(name)) continue;
+    if (isNonFood(name)) continue;
 
     const lineConfData = lineConfidence[rawLine] || lineConfidence[line];
     const ocrConf = lineConfData ? lineConfData.sum / lineConfData.count : 75;

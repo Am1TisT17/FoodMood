@@ -39,6 +39,9 @@ class WasteRiskClassifier:
         if self._model is None or len(X) < 5:
             log.info("eLCS skipped: too few samples or library missing")
             return
+        if len(np.unique(y)) < 2:
+            log.info("eLCS skipped: needs at least 2 classes in y")
+            return
         self._model.fit(X, y)
         self._feature_names = feature_names
         self._samples_seen = int(X.shape[0])

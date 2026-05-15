@@ -101,6 +101,9 @@ export interface NotificationRecipePayloadDTO {
   image: string;
   matchPercentage: number;
   cookingTime: number;
+  urgentIngredientsUsed?: string[];
+  personalRank?: number;
+  mlInsight?: string;
 }
 
 export interface NotificationDTO {

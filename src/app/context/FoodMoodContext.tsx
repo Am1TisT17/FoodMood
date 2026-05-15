@@ -24,6 +24,8 @@ export interface Recipe {
   image: string;
   /** ML-only: personal relevance score (0-100) */
   personalRank?: number;
+  /** ML-only: human readable insight */
+  mlInsight?: string;
 }
 
 export interface CommunityListing {

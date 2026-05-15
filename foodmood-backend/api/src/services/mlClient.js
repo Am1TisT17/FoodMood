@@ -63,6 +63,7 @@ function parseRecipe(r) {
     urgentIngredientsUsed: r.urgentIngredientsUsed || [],
     score: typeof r.score === 'number' ? r.score : undefined,
     personalRank: r.personalRank ?? null,
+    mlInsight: r.mlInsight || null,
   };
 }
 

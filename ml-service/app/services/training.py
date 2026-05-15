@@ -92,7 +92,12 @@ async def retrain_pipeline(matcher: RecipeMatcher) -> dict:
         "battery", "soap", "shampoo", "paper towel", "toilet paper", "receipt", "bag",
         "detergent", "toothpaste", "bleach", "sponge", "cleaner", "napkins", "trash bags",
         "plastic wrap", "foil", "light bulb", "pet food", "dog food", "cat food", "lotion",
-        "deodorant", "razor", "shaving cream", "diapers", "wipes", "magazine", "gift card"
+        "deodorant", "razor", "shaving cream", "diapers", "wipes", "magazine", "gift card",
+        "шампунь", "мыло", "гель для душа", "порошок", "кондиционер", "салфетки", "губка",
+        "пакет", "мешки для мусора", "туалетная бумага", "зубная паста", "пена для бритья",
+        "памперсы", "прокладки", "fairy", "domestos", "tide", "ariel", "корм для собак",
+        "корм для кошек", "лампочка", "батарейки", "освежитель воздуха", "дезодорант",
+        "крем", "лосьон", "пленка", "фольга", "пергамент", "щетка"
     ]
     negative_names = list(set(rejected_names + synthetic_negatives))
 

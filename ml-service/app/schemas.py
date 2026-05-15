@@ -62,6 +62,10 @@ class RecipeOut(BaseModel):
         le=1,
         description="Personal ranker score when userId was supplied on /recommend (higher = better).",
     )
+    mlInsight: Optional[str] = Field(
+        default=None,
+        description="Human-readable explanation of why this recipe was recommended.",
+    )
 
 
 class RecommendMeta(BaseModel):

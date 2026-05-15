@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { api, NotificationDTO } from "../../lib/api";
+import { Sidebar } from "../components/Sidebar";
+import { BottomNav } from "../components/BottomNav";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { toast } from "sonner";
@@ -176,8 +178,12 @@ export function Notifications() {
   const filtered = notifications.filter((n) => filter === "all" || !n.read);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="min-h-screen bg-[#f8fafc]">
+      <Sidebar />
+      <BottomNav />
+      <main className="lg:ml-64 pb-20 lg:pb-6">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
+          {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-3xl font-bold tracking-tight text-[#2D3748]">Notifications</h2>
@@ -374,6 +380,8 @@ export function Notifications() {
           </Button>
         </div>
       )}
+        </div>
+      </main>
     </div>
   );
 }
