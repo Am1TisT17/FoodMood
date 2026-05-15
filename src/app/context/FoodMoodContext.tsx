@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { api, auth } from '../../lib/api';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { api, auth, RecommendMetaDTO } from '../../lib/api';
 
 export interface FoodItem {
   id: string;
@@ -22,6 +22,8 @@ export interface Recipe {
   ingredients: { name: string; amount: string; inPantry: boolean }[];
   instructions: string[];
   image: string;
+  /** ML-only: personal relevance score (0-100) */
+  personalRank?: number;
 }
 
 export interface CommunityListing {
@@ -42,9 +44,18 @@ interface UserStats {
   wasteWarriorLevel: number;
 }
 
+/** Information about the last recommendation fetch. */
+export interface RecommendationsInfo {
+  /** 'ml' | 'rule' | 'popular' | 'fallback' */
+  source: string;
+  meta: RecommendMetaDTO;
+}
+
 interface FoodMoodContextType {
   inventory: FoodItem[];
   recipes: Recipe[];
+  /** Info about how the current recipe list was generated (source + meta). */
+  recommendationsInfo: RecommendationsInfo | null;
   communityListings: CommunityListing[];
   userStats: UserStats;
   userName: string;
@@ -71,13 +82,14 @@ const defaultStats: UserStats = {
 export function FoodMoodProvider({ children }: { children: ReactNode }) {
   const [inventory, setInventory] = useState<FoodItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [recommendationsInfo, setRecommendationsInfo] = useState<RecommendationsInfo | null>(null);
   const [communityListings, setCommunityListings] = useState<CommunityListing[]>([]);
-  const [userStats, setUserStats] = useState<UserStats>(defaultStats);
-  const [userName, setUserName] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(true);
+  const [userStats, setUserStats] = useState(defaultStats);
+  const [userName, setUserName] = useState('');
+  const [loading, setLoading] = useState(true);
 
   // Load everything from the backend after login.
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (!auth.isAuthenticated()) {
       setLoading(false);
       return;
@@ -95,13 +107,17 @@ export function FoodMoodProvider({ children }: { children: ReactNode }) {
       setUserStats(statsRes.stats);
       setInventory(invRes.items as FoodItem[]);
       setRecipes(recRes.recipes as Recipe[]);
+      setRecommendationsInfo({
+        source: recRes.source || 'fallback',
+        meta: recRes.meta || { personalizationApplied: false },
+      });
       setCommunityListings(commRes.listings as CommunityListing[]);
     } catch (err) {
       console.error('[FoodMoodContext] refresh failed:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -111,7 +127,7 @@ export function FoodMoodProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
-  }, []);
+  }, [refresh]);
 
   const addItem = async (item: FoodItem) => {
     const { item: saved } = await api.addItem({
@@ -166,6 +182,7 @@ export function FoodMoodProvider({ children }: { children: ReactNode }) {
       value={{
         inventory,
         recipes,
+        recommendationsInfo,
         communityListings,
         userStats,
         userName,

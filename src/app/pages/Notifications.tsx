@@ -1,119 +1,98 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Sidebar } from "../components/Sidebar";
-import { BottomNav } from "../components/BottomNav";
-import { api } from "../../lib/api";
-import { Card } from "../components/ui/card";
+import { api, NotificationDTO } from "../../lib/api";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import {
-  Bell, Clock, ChefHat, Users,
-  Check, Trash2, Filter, BellOff, TrendingUp
-} from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
-
-type BackendType = "expiry_warning" | "expiry_critical" | "recipe_suggestion" | "community" | "system";
-type UIType = "expiry" | "recipe" | "community" | "achievement" | "system";
+import {
+  Clock,
+  ChefHat,
+  Users,
+  Trophy,
+  Settings,
+  Bell,
+  Sparkles,
+  ArrowRight,
+  X,
+  Star,
+} from "lucide-react";
 
 interface Notification {
   id: string;
-  type: UIType;
+  type: "expiry" | "recipe" | "community" | "achievement" | "system" | "ml-recipe";
   title: string;
   message: string;
   time: string;
   read: boolean;
   actionLabel?: string;
   actionPath?: string;
+  // ── ML-specific UI fields ──
+  /** Canonical name of the expiring product (from ML) */
+  canonicalName?: string;
+  /** Days until expiry */
+  daysToExpiry?: number;
+  /** Suggested recipes from ML notification */
+  recipes?: Array<{
+    id: string;
+    name: string;
+    image: string;
+    matchPercentage: number;
+    cookingTime: number;
+  }>;
 }
 
-// Map backend → UI types
-function mapType(backendType: BackendType | string): UIType {
-  switch (backendType) {
-    case "expiry_warning":
-    case "expiry_critical":
-      return "expiry";
-    case "recipe_suggestion":
-      return "recipe";
-    case "community":
-      return "community";
-    default:
-      return "system";
-  }
-}
+const mapType = (raw: string): Notification["type"] => {
+  if (raw.startsWith("ml-recipe")) return "ml-recipe";
+  if (raw.includes("expir")) return "expiry";
+  if (raw.includes("recipe")) return "recipe";
+  if (raw.includes("community")) return "community";
+  if (raw.includes("achiev")) return "achievement";
+  return "system";
+};
 
-// Add emoji prefix based on backend type
-function decorateTitle(backendType: string, title: string): string {
-  if (title.match(/^[\p{Emoji}]/u)) return title; // already has emoji
-  switch (backendType) {
-    case "expiry_critical":
-      return `⏰ ${title}`;
-    case "expiry_warning":
-      return `⏰ ${title}`;
-    case "recipe_suggestion":
-      return `🍳 ${title}`;
-    case "community":
-      return `🤝 ${title}`;
-    case "system":
-      return `📊 ${title}`;
-    default:
-      return title;
-  }
-}
+const decorateTitle = (rawType: string, title: string) => {
+  if (rawType.startsWith("ml-")) return `🤖 ${title}`;
+  return title;
+};
 
-// Action button per type
-function actionFor(type: UIType): { label: string; path: string } | undefined {
+const actionFor = (type: Notification["type"]) => {
   switch (type) {
     case "expiry":
+    case "ml-recipe":
       return { label: "Find Recipes", path: "/recipes" };
     case "recipe":
-      return { label: "Cook Now", path: "/recipes" };
+      return { label: "View Recipe", path: "/recipes" };
     case "community":
       return { label: "View Listing", path: "/community" };
     case "achievement":
       return { label: "View Profile", path: "/profile" };
-    case "system":
-      return { label: "View Pantry", path: "/pantry" };
     default:
       return undefined;
   }
-}
-
-// Convert ISO timestamp → relative "10 min ago" / "2 hours ago" / "Yesterday"
-function timeAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  if (Number.isNaN(ms)) return "just now";
-  const sec = Math.floor(ms / 1000);
-  if (sec < 60) return "just now";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min} min ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} hour${hr > 1 ? "s" : ""} ago`;
-  const day = Math.floor(hr / 24);
-  if (day === 1) return "Yesterday";
-  if (day < 7) return `${day} days ago`;
-  return new Date(iso).toLocaleDateString();
-}
-
-// Live (derived) notifications carry IDs like "expiry-<ObjectId>" — they aren't
-// stored in the notifications collection, so we don't POST /read for them; we
-// just track read state on the client.
-const isEphemeral = (id: string) => id.startsWith("expiry-");
-
-const typeIcons: Record<UIType, React.ReactNode> = {
-  expiry: <Clock className="w-4 h-4" />,
-  recipe: <ChefHat className="w-4 h-4" />,
-  community: <Users className="w-4 h-4" />,
-  achievement: <TrendingUp className="w-4 h-4" />,
-  system: <Bell className="w-4 h-4" />,
 };
 
-const typeColors: Record<UIType, string> = {
+// Ephemeral IDs are NOT persisted on the backend:
+// - "expiry-..."  — generated locally from inventory state
+// - "ml-recipe-..." — ephemeral suggestions from ML service
+const isEphemeral = (id: string) =>
+  id.startsWith("expiry-") || id.startsWith("ml-recipe-");
+
+const typeIcons: Record<Notification["type"], React.ReactNode> = {
+  expiry: <Clock className="w-5 h-5" />,
+  recipe: <ChefHat className="w-5 h-5" />,
+  community: <Users className="w-5 h-5" />,
+  achievement: <Trophy className="w-5 h-5" />,
+  system: <Bell className="w-5 h-5" />,
+  "ml-recipe": <Sparkles className="w-5 h-5" />,
+};
+
+const typeColors: Record<Notification["type"], string> = {
   expiry: "bg-amber-100 text-amber-600",
   recipe: "bg-[#B2D2A4]/30 text-[#4A5568]",
   community: "bg-blue-100 text-blue-600",
   achievement: "bg-purple-100 text-purple-600",
   system: "bg-gray-100 text-gray-500",
+  "ml-recipe": "bg-emerald-100 text-emerald-600",
 };
 
 export function Notifications() {
@@ -126,7 +105,7 @@ export function Notifications() {
     setLoading(true);
     try {
       const { notifications: list } = await api.notifications();
-      const mapped: Notification[] = list.map((n: any) => {
+      const mapped: Notification[] = list.map((n: NotificationDTO) => {
         const uiType = mapType(n.type);
         const action = actionFor(uiType);
         return {
@@ -138,11 +117,14 @@ export function Notifications() {
           read: !!n.read,
           actionLabel: action?.label,
           actionPath: action?.path,
+          // ML fields
+          canonicalName: n.canonicalName,
+          daysToExpiry: n.daysToExpiry,
+          recipes: n.recipes,
         };
       });
       setNotifications(mapped);
     } catch (err: any) {
-      // Silently fail — show empty state. Auth errors mean user isn't logged in.
       console.error("[notifications] load failed:", err);
       setNotifications([]);
     } finally {
@@ -152,7 +134,6 @@ export function Notifications() {
 
   useEffect(() => {
     load();
-    // Auto-refresh every minute so expiry alerts stay current
     const t = setInterval(load, 60_000);
     return () => clearInterval(t);
   }, []);
@@ -184,8 +165,6 @@ export function Notifications() {
   };
 
   const deleteNotification = (id: string) => {
-    // Locally hide it — ephemeral expiry alerts will re-appear next refresh
-    // unless the underlying item is consumed/discarded.
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
@@ -197,200 +176,215 @@ export function Notifications() {
   const filtered = notifications.filter((n) => filter === "all" || !n.read);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <BottomNav />
-
-      <main className="lg:ml-64 pb-20 lg:pb-6">
-        <div className="max-w-3xl mx-auto p-6">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between flex-wrap gap-4 mb-8"
-          >
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-[#4A5568]">Notifications</h1>
-              {unreadCount > 0 && (
-                <Badge className="bg-[#B2D2A4] text-[#4A5568]">{unreadCount} new</Badge>
-              )}
-            </div>
-            <div className="flex gap-2">
-              {unreadCount > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={markAllRead}
-                  className="rounded-xl text-sm"
-                >
-                  <Check className="w-4 h-4 mr-1" />
-                  Mark all read
-                </Button>
-              )}
-              {notifications.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearAll}
-                  className="rounded-xl text-sm text-red-400 border-red-200 hover:bg-red-50"
-                >
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Clear all
-                </Button>
-              )}
-            </div>
-          </motion.div>
-
-          {/* Filter tabs */}
-          <div className="flex gap-2 mb-6">
-            <button
-              onClick={() => setFilter("all")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                filter === "all"
-                  ? "bg-[#B2D2A4] text-[#4A5568]"
-                  : "bg-white text-[#4A5568]/60 border border-gray-100 hover:bg-gray-50"
-              }`}
-            >
-              <Bell className="w-4 h-4" />
-              All ({notifications.length})
-            </button>
-            <button
-              onClick={() => setFilter("unread")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                filter === "unread"
-                  ? "bg-[#4A5568] text-white"
-                  : "bg-white text-[#4A5568]/60 border border-gray-100 hover:bg-gray-50"
-              }`}
-            >
-              <Filter className="w-4 h-4" />
-              Unread ({unreadCount})
-            </button>
-          </div>
-
-          {/* Notifications list */}
-          <div className="space-y-3">
-            <AnimatePresence>
-              {loading ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-16"
-                >
-                  <p className="text-[#4A5568]/50 text-sm">Loading notifications...</p>
-                </motion.div>
-              ) : filtered.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-16"
-                >
-                  <BellOff className="w-12 h-12 text-[#4A5568]/20 mx-auto mb-4" />
-                  <p className="text-[#4A5568]/60 font-medium">
-                    {filter === "unread" ? "No unread notifications" : "No notifications yet"}
-                  </p>
-                  <p className="text-sm text-[#4A5568]/40 mt-1">
-                    {filter === "unread"
-                      ? "You're all caught up!"
-                      : "Add items to your pantry — alerts about expiring food will appear here automatically"}
-                  </p>
-                </motion.div>
-              ) : (
-                filtered.map((notification, index) => (
-                  <motion.div
-                    key={notification.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -100 }}
-                    transition={{ delay: index * 0.04 }}
-                    onClick={() => markRead(notification.id)}
-                  >
-                    <Card
-                      className={`p-4 rounded-[20px] shadow-[0px_2px_8px_rgba(0,0,0,0.04)] cursor-pointer hover:shadow-[0px_4px_16px_rgba(0,0,0,0.08)] transition-all border-l-4 ${
-                        !notification.read
-                          ? "border-l-[#B2D2A4] bg-white"
-                          : "border-l-transparent bg-white/70"
-                      }`}
-                    >
-                      <div className="flex items-start gap-4">
-                        {/* Type icon */}
-                        <div
-                          className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            typeColors[notification.type]
-                          }`}
-                        >
-                          {typeIcons[notification.type]}
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <p
-                              className={`text-sm font-semibold ${
-                                !notification.read ? "text-[#4A5568]" : "text-[#4A5568]/70"
-                              }`}
-                            >
-                              {notification.title}
-                              {!notification.read && (
-                                <span className="ml-2 w-2 h-2 bg-[#B2D2A4] rounded-full inline-block" />
-                              )}
-                            </p>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <span className="text-xs text-[#4A5568]/40">{notification.time}</span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteNotification(notification.id);
-                                }}
-                                className="p-1 rounded-lg text-[#4A5568]/30 hover:text-red-400 hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                          <p className="text-sm text-[#4A5568]/60 mb-3 leading-relaxed">
-                            {notification.message}
-                          </p>
-                          {notification.actionLabel && (
-                            <Button
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                markRead(notification.id);
-                                navigate(notification.actionPath || "/dashboard");
-                              }}
-                              className="h-7 text-xs bg-[#B2D2A4]/20 hover:bg-[#B2D2A4]/40 text-[#4A5568] border border-[#B2D2A4]/30 rounded-lg px-3"
-                            >
-                              {notification.actionLabel}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Quick settings link */}
-          {notifications.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="mt-6 text-center"
-            >
-              <button
-                onClick={() => navigate("/profile")}
-                className="text-sm text-[#4A5568]/50 hover:text-[#4A5568] transition-colors flex items-center gap-2 mx-auto"
-              >
-                <Bell className="w-4 h-4" />
-                Manage notification preferences
-              </button>
-            </motion.div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-3xl font-bold tracking-tight text-[#2D3748]">Notifications</h2>
+          {unreadCount > 0 && (
+            <Badge className="bg-[#B2D2A4] text-[#2D3748] hover:bg-[#B2D2A4]">
+              {unreadCount} new
+            </Badge>
           )}
         </div>
-      </main>
+        <div className="flex gap-2">
+          {unreadCount > 0 && (
+            <Button variant="outline" size="sm" onClick={markAllRead}>
+              Mark all read
+            </Button>
+          )}
+          {notifications.length > 0 && (
+            <Button variant="outline" size="sm" onClick={clearAll}>
+              Clear all
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex gap-2">
+        <Button
+          variant={filter === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setFilter("all")}
+          className={filter === "all" ? "bg-[#2D3748]" : ""}
+        >
+          All
+        </Button>
+        <Button
+          variant={filter === "unread" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setFilter("unread")}
+          className={filter === "unread" ? "bg-[#2D3748]" : ""}
+        >
+          Unread ({unreadCount})
+        </Button>
+      </div>
+
+      {/* Notifications list */}
+      <div className="space-y-3">
+        {loading ? (
+          <div className="text-center py-12 text-[#718096]">
+            <div className="animate-spin w-6 h-6 border-2 border-[#B2D2A4] border-t-transparent rounded-full mx-auto mb-3" />
+            Loading notifications...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12">
+            <Bell className="w-12 h-12 text-[#E2E8F0] mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-[#2D3748] mb-1">
+              {filter === "unread" ? "No unread notifications" : "No notifications yet"}
+            </h3>
+            <p className="text-sm text-[#718096]">
+              {filter === "unread"
+                ? "You're all caught up!"
+                : "Add items to your pantry — alerts about expiring food will appear here automatically"}
+            </p>
+          </div>
+        ) : (
+          filtered.map((notification) => (
+            <div
+              key={notification.id}
+              className={`group bg-white rounded-xl border p-4 transition-all hover:shadow-md ${
+                notification.read
+                  ? "border-[#E2E8F0]"
+                  : "border-[#B2D2A4]/50 bg-[#F7FAFC]"
+              }`}
+              onClick={() => markRead(notification.id)}
+            >
+              <div className="flex items-start gap-4">
+                {/* Type icon */}
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    typeColors[notification.type]
+                  }`}
+                >
+                  {typeIcons[notification.type]}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-semibold text-[#2D3748] text-sm">
+                        {notification.title}
+                        {!notification.read && (
+                          <span className="ml-2 w-2 h-2 bg-[#B2D2A4] rounded-full inline-block" />
+                        )}
+                      </h4>
+                      <p className="text-xs text-[#718096] mt-0.5">{notification.time}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNotification(notification.id);
+                      }}
+                    >
+                      <X className="w-4 h-4 text-[#718096]" />
+                    </Button>
+                  </div>
+
+                  <p className="text-sm text-[#4A5568] mt-1">{notification.message}</p>
+
+                  {/* ── ML Recipe Suggestions Block ── */}
+                  {(notification.type === "ml-recipe" || notification.type === "expiry") &&
+                    notification.recipes &&
+                    notification.recipes.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs font-semibold text-[#2D3748] flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-emerald-500" />
+                          Suggested recipes for{" "}
+                          {notification.canonicalName || "your item"}
+                          {notification.daysToExpiry !== undefined && (
+                            <Badge variant="outline" className="text-amber-600 border-amber-200 text-[10px] ml-1">
+                              {notification.daysToExpiry === 0
+                                ? "expires today"
+                                : `${notification.daysToExpiry}d left`}
+                            </Badge>
+                          )}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {notification.recipes.slice(0, 3).map((recipe) => (
+                            <div
+                              key={recipe.id}
+                              className="flex items-center gap-2 p-2 rounded-lg border border-[#E2E8F0] hover:border-[#B2D2A4] hover:bg-[#F7FAFC] cursor-pointer transition-all"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate("/recipes");
+                              }}
+                            >
+                              <img
+                                src={recipe.image}
+                                alt={recipe.name}
+                                className="w-12 h-12 rounded-lg object-cover shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-[#2D3748] truncate">
+                                  {recipe.name}
+                                </p>
+                                <div className="flex items-center gap-2 text-[10px] text-[#718096]">
+                                  <span className="flex items-center gap-0.5">
+                                    <Star className="w-3 h-3 text-[#B2D2A4]" />
+                                    {recipe.matchPercentage}%
+                                  </span>
+                                  <span>⏱ {recipe.cookingTime}m</span>
+                                </div>
+                              </div>
+                              <ArrowRight className="w-4 h-4 text-[#718096] shrink-0 ml-auto" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {notification.actionLabel && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 text-[#B2D2A4] hover:text-[#2D3748] hover:bg-[#B2D2A4]/10 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (notification.actionPath) navigate(notification.actionPath);
+                      }}
+                    >
+                      {notification.actionLabel}
+                      <ArrowRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Quick settings link */}
+      {notifications.length > 0 && (
+        <div className="text-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-[#718096] hover:text-[#2D3748]"
+            onClick={() => navigate("/profile")}
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Notification settings
+          </Button>
+        </div>
+      )}
     </div>
   );
+}
+
+function timeAgo(dateStr: string) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  return date.toLocaleDateString();
 }

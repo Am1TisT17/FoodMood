@@ -74,7 +74,7 @@ export function FooterSection() {
           {/* Brand column */}
           <div className="col-span-2">
             <div className="flex items-center gap-2.5 mb-5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#B2D2A4] to-[#7FB069] flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-[#B2D2A4] to-[#7FB069] flex items-center justify-center">
                 <Leaf className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold tracking-tight">FoodMood</span>

@@ -40,7 +40,7 @@ export function Sidebar() {
           className="flex items-center gap-3 cursor-pointer"
           onClick={() => navigate("/")}
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#B2D2A4] to-[#7FB069] flex items-center justify-center shadow-lg shadow-[#B2D2A4]/30">
+          <div className="w-9 h-9 rounded-xl bg-linear-to-br from-[#B2D2A4] to-[#7FB069] flex items-center justify-center shadow-lg shadow-[#B2D2A4]/30">
             <Leaf className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -75,7 +75,7 @@ export function Sidebar() {
               <>
                 <div
                   className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
+                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all",
                     isActive
                       ? "bg-[#B2D2A4] shadow-lg shadow-[#B2D2A4]/30"
                       : "bg-white/8 group-hover:bg-white/12"
@@ -113,7 +113,7 @@ export function Sidebar() {
               <>
                 <div
                   className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
+                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all",
                     isActive
                       ? "bg-[#B2D2A4] shadow-lg shadow-[#B2D2A4]/30"
                       : "bg-white/8 group-hover:bg-white/12"
@@ -134,7 +134,7 @@ export function Sidebar() {
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/6 transition-all cursor-pointer mb-2"
           onClick={() => navigate("/profile")}
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#B2D2A4] to-[#7FB069] flex items-center justify-center text-white text-sm font-bold shadow-md shadow-[#B2D2A4]/30 flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-linear-to-br from-[#B2D2A4] to-[#7FB069] flex items-center justify-center text-white text-sm font-bold shadow-md shadow-[#B2D2A4]/30 shrink-0">
             {initial}
           </div>
           <div className="flex-1 min-w-0">

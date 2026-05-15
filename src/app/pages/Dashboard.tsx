@@ -8,13 +8,15 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import {
   Plus, Scan, Clock, ChefHat, TrendingUp, Leaf,
-  DollarSign, Bell, BarChart2, ArrowRight, Flame, Package
+  DollarSign, Bell, BarChart2, ArrowRight, Flame, Package,
+  Sparkles, Star
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 import { motion } from "motion/react";
+import { api, RecipeFeedbackAction } from "../../lib/api";
 
 const weeklyData = [
   { day: "Mon", waste: 2, consumed: 8 },
@@ -37,8 +39,13 @@ const trendData = [
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { inventory, userName, userStats, recipes } = useFoodMood();
+  const { inventory, userName, userStats, recipes, recommendationsInfo } = useFoodMood();
   const [showFAB, setShowFAB] = useState(false);
+
+  const source = recommendationsInfo?.source || "fallback";
+  const meta = recommendationsInfo?.meta;
+  const isML = source === "ml";
+  const personalizationApplied = meta?.personalizationApplied ?? false;
 
   const getTimeGreeting = () => {
     const hour = new Date().getHours();
@@ -60,6 +67,19 @@ export function Dashboard() {
   const expiringItems = getExpiringItems();
   const getDays = (expiryDate: string) =>
     Math.ceil((new Date(expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+
+  // Send feedback when user clicks a recipe card on dashboard
+  const handleRecipeClick = (recipeId: string) => {
+    try {
+      api.sendRecipeFeedback({
+        recipeId,
+        action: "view" as RecipeFeedbackAction,
+        source,
+        timestamp: new Date().toISOString(),
+      }).catch(() => {}); // best-effort
+    } catch {}
+    navigate("/recipes");
+  };
 
   const kpis = [
     {
@@ -111,9 +131,9 @@ export function Dashboard() {
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <div>
               <h1 className="font-bold text-[#1a2332]">
-                {getTimeGreeting()}, {userName}! 👋
+                {getTimeGreeting()}, {userName}! 🌿
               </h1>
-              <p className="text-xs text-[#4A5568]/50">Here's your sustainability overview</p>
+              <p className="text-xs text-[#4A5568]/50">Here&apos;s your sustainability overview</p>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -147,7 +167,7 @@ export function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-gradient-to-r from-[#1a2332] to-[#2d3748] rounded-2xl shadow-lg">
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-linear-to-r from-[#1a2332] to-[#2d3748] rounded-2xl shadow-lg">
               <Flame className="w-4 h-4 text-[#B2D2A4]" />
               <span className="text-white text-sm font-semibold">
                 Waste Warrior — Level {userStats.wasteWarriorLevel}
@@ -307,7 +327,7 @@ export function Dashboard() {
                   return (
                     <Card
                       key={item.id}
-                      className="min-w-[240px] p-5 rounded-3xl border-2 border-amber-200/60 bg-gradient-to-br from-amber-50 to-white shadow-sm hover:shadow-lg transition-all"
+                      className="min-w-60 p-5 rounded-3xl border-2 border-amber-200/60 bg-linear-to-br from-amber-50 to-white shadow-sm hover:shadow-lg transition-all"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div>
@@ -317,7 +337,7 @@ export function Dashboard() {
                           </p>
                         </div>
                         <span
-                          className={`text-xs font-bold px-2.5 py-1 rounded-xl ${
+                          className={`text-xs font-bold px-2.5 py-1 rounded-xl ${ 
                             days <= 1
                               ? "bg-red-100 text-red-500"
                               : "bg-amber-100 text-amber-600"
@@ -341,7 +361,7 @@ export function Dashboard() {
             </motion.div>
           )}
 
-          {/* Suggested Recipes */}
+          {/* Suggested Recipes — SOURCE-AWARE */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -350,7 +370,20 @@ export function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <ChefHat className="w-5 h-5 text-[#B2D2A4]" />
-                <h2 className="font-bold text-[#1a2332]">AI Recipe Suggestions</h2>
+                <h2 className="font-bold text-[#1a2332]">
+                  {isML && personalizationApplied
+                    ? "AI Recipe Suggestions"
+                    : isML
+                    ? "Recipe Suggestions"
+                    : "Recommended Recipes"}
+                </h2>
+                {/* ML personalization badge in header */}
+                {isML && personalizationApplied && (
+                  <Badge variant="outline" className="text-emerald-700 border-emerald-200 text-xs bg-emerald-50">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Personalized
+                  </Badge>
+                )}
               </div>
               <Button
                 variant="ghost"
@@ -362,6 +395,19 @@ export function Dashboard() {
                 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
+
+            {/* Personalization status banner */}
+            {isML && !personalizationApplied && (
+              <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-700 mb-4">
+                <TrendingUp className="w-4 h-4" />
+                <span>
+                  {meta?.personalizationDisabledReason
+                    ? meta.personalizationDisabledReason
+                    : "Personalization temporarily unavailable — showing general recommendations"}
+                </span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {recipes.slice(0, 3).map((recipe) => (
                 <motion.div
@@ -371,7 +417,7 @@ export function Dashboard() {
                 >
                   <Card
                     className="overflow-hidden rounded-3xl border-0 shadow-[0_2px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-300 cursor-pointer"
-                    onClick={() => navigate("/recipes")}
+                    onClick={() => handleRecipeClick(recipe.id)}
                   >
                     <div className="relative">
                       <img
@@ -379,11 +425,23 @@ export function Dashboard() {
                         alt={recipe.name}
                         className="w-full h-44 object-cover"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                      <div className="absolute top-3 right-3">
+                      <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
+                      <div className="absolute top-3 right-3 flex flex-col gap-1 items-end">
                         <span className="px-2.5 py-1 bg-[#B2D2A4] text-[#1a2332] text-xs font-bold rounded-xl shadow">
                           {recipe.matchPercentage}% Match
                         </span>
+                        {isML && personalizationApplied && (
+                          <span className="px-2 py-0.5 bg-white/90 text-emerald-700 border border-emerald-200 text-[10px] font-medium rounded-lg flex items-center">
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            Personalized
+                          </span>
+                        )}
+                        {recipe.personalRank !== undefined && (
+                          <span className="px-2 py-0.5 bg-white/90 text-indigo-600 border border-indigo-200 text-[10px] font-medium rounded-lg flex items-center">
+                            <Star className="w-3 h-3 mr-1" />
+                            {recipe.personalRank}% Relevance
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="p-5">

@@ -45,11 +45,47 @@ export interface FoodItemDTO {
   id: string; name: string; category: string; quantity: number; unit: string;
   price: number; expiryDate: string; addedDate: string; image?: string; status?: string;
 }
-export interface RecipeDTO {
-  id: string; name: string; matchPercentage: number; cookingTime: number; servings: number;
-  ingredients: { name: string; amount: string; inPantry: boolean }[];
-  instructions: string[]; image: string;
+
+// ───── Recipe DTOs with ML fields ─────
+export interface RecipeIngredientDTO {
+  name: string; amount: string; inPantry: boolean;
 }
+
+export interface RecipeDTO {
+  id: string;
+  name: string;
+  matchPercentage: number;
+  cookingTime: number;
+  servings: number;
+  ingredients: RecipeIngredientDTO[];
+  instructions: string[];
+  image: string;
+  /** ML-only: personal relevance score (0-100). Higher = more relevant for this user. */
+  personalRank?: number;
+}
+
+/** Metadata about how recommendations were generated. */
+export interface RecommendMetaDTO {
+  /** true if ML personalization was actually applied to this result set */
+  personalizationApplied: boolean;
+  /** Optional human-readable reason when personalization is off */
+  personalizationDisabledReason?: string;
+  /** ML model version or backend strategy identifier */
+  modelVersion?: string;
+  /** Timestamp of generation */
+  generatedAt?: string;
+  /** Any extra debug/analytics fields */
+  [key: string]: any;
+}
+
+export interface RecommendRecipesResponseDTO {
+  recipes: RecipeDTO[];
+  /** Source of recommendations: 'ml' | 'rule' | 'popular' | 'fallback' */
+  source: string;
+  /** Metadata about generation */
+  meta: RecommendMetaDTO;
+}
+
 export interface CommunityListingDTO {
   id: string; itemName: string; quantity: string; userName: string;
   image?: string; lat: number; lng: number; distance?: string; status?: string;
@@ -57,9 +93,45 @@ export interface CommunityListingDTO {
 export interface ScannedItemDTO {
   name: string; price: string; expiryDate: string; confidence: number;
 }
+
+// ───── Extended Notification DTOs for ML responses ─────
+export interface NotificationRecipePayloadDTO {
+  id: string;
+  name: string;
+  image: string;
+  matchPercentage: number;
+  cookingTime: number;
+}
+
 export interface NotificationDTO {
-  id: string; type: string; title: string; body: string;
-  payload?: any; read: boolean; createdAt: string;
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  payload?: any;
+  read: boolean;
+  createdAt: string;
+  // ── ML-specific fields ──
+  /** Canonical name of the expiring item (for expiry alerts from ML) */
+  canonicalName?: string;
+  /** Days until expiry */
+  daysToExpiry?: number;
+  /** Suggested recipes when ML sends a smart expiry alert */
+  recipes?: NotificationRecipePayloadDTO[];
+}
+
+// ───── Feedback DTO for ML learning loop ─────
+export type RecipeFeedbackAction = 'view' | 'cooked' | 'dismissed' | 'saved' | 'shared';
+
+export interface RecipeFeedbackDTO {
+  recipeId: string;
+  action: RecipeFeedbackAction;
+  /** Optional: source from the recommendation response that produced this recipe */
+  source?: string;
+  /** Optional: timestamp when the action happened */
+  timestamp?: string;
+  /** Optional: any extra context (e.g. time spent viewing) */
+  metadata?: Record<string, any>;
 }
 
 // ───── API surface ─────
@@ -101,9 +173,21 @@ export const api = {
   // Recipes
   listRecipes: () => request<{ recipes: RecipeDTO[] }>('/api/recipes'),
   recommendRecipes: (limit = 12) =>
-    request<{ recipes: RecipeDTO[]; source?: string }>(`/api/recipes/recommend/me?limit=${limit}`),
+    request<RecommendRecipesResponseDTO>(`/api/recipes/recommend/me?limit=${limit}`),
   useRecipe: (id: string) =>
     request<{ consumed: FoodItemDTO[]; stats: UserDTO['stats'] }>(`/api/recipes/${id}/use`, { method: 'POST' }),
+
+  // ───── ML Feedback loop ─────
+  /** Send user interaction with a recipe back to the backend for ML training.
+   *  The backend forwards this to /feedback on the ML service. */
+  sendRecipeFeedback: (feedback: RecipeFeedbackDTO) =>
+    request<{ ok: true }>('/api/recipes/feedback', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...feedback,
+        timestamp: feedback.timestamp || new Date().toISOString(),
+      }),
+    }),
 
   // Scanner
   scanReceipt: (file: File) => {
@@ -138,5 +222,5 @@ export const api = {
   // Notifications
   notifications: () => request<{ notifications: NotificationDTO[] }>('/api/notifications'),
   markNotificationRead: (id: string) =>
-    request(`/api/notifications/${id}/read`, { method: 'POST' }),
+    request<void>(`/api/notifications/${id}/read`, { method: 'POST' }),
 };
