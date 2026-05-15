@@ -59,8 +59,8 @@ class RecipeOut(BaseModel):
     personalRank: Optional[float] = Field(
         default=None,
         ge=0,
-        le=1,
-        description="Personal ranker score when userId was supplied on /recommend (higher = better).",
+        le=100,
+        description="Personal relevance for this user (0–100). From ranker P(positive) when userId is set.",
     )
     mlInsight: Optional[str] = Field(
         default=None,

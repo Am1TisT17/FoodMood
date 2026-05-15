@@ -62,13 +62,16 @@ class PersonalRanker:
     def samples_seen(self) -> int:
         return self._samples_seen
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
-        """y is a binary label: 1 = positive (cook/like/view), 0 = negative (dismiss).
+    def fit(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        sample_weight: np.ndarray | None = None,
+    ) -> dict[str, Any]:
+        """y: 1 = positive (cook/like), 0 = negative (dismiss).
 
-        We use sample_weight equal to the feedback weight so 'cook' counts
-        more than 'view'. LogisticRegression is intentionally simple: it
-        works with few samples, the coefficients are interpretable for the
-        diploma writeup, and it has no extra dependencies.
+        sample_weight: stronger actions (cook, dismiss) count more than weak ones.
+        Passive 'view' events should be excluded upstream, not passed here.
         """
         with self._lock:
             if X.shape[0] < MIN_TRAIN_SAMPLES:
@@ -91,7 +94,10 @@ class PersonalRanker:
                 class_weight="balanced",
                 solver="lbfgs",
             )
-            model.fit(X, y)
+            if sample_weight is not None and len(sample_weight) == len(y):
+                model.fit(X, y, sample_weight=sample_weight)
+            else:
+                model.fit(X, y)
             self._model = model
             self._fitted = True
             self._samples_seen = int(X.shape[0])

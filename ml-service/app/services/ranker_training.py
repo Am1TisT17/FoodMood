@@ -16,13 +16,19 @@ from .feedback_store import (
 log = logging.getLogger(__name__)
 
 
-def _label_from_action(action: str) -> int:
-    """Binary label: positive = engaged (view/like/cook), negative = dismissed."""
+def _label_from_action(action: str) -> int | None:
+    """Binary label for training. Passive views are excluded (return None)."""
+    if action == "view":
+        return None
     if action == "dismiss":
         return 0
-    if action in ACTION_WEIGHT:
+    if action in ("cook", "like"):
         return 1
-    return 0
+    return None
+
+
+def _sample_weight_for_action(action: str) -> float:
+    return float(ACTION_WEIGHT.get(action, 0.5))
 
 
 async def train_personal_ranker() -> dict[str, Any]:
@@ -50,11 +56,16 @@ async def train_personal_ranker() -> dict[str, Any]:
 
     rows: list[list[float]] = []
     labels: list[int] = []
+    weights: list[float] = []
 
     for fb in feedback:
         user_id = str(fb.get("user_id"))
         recipe_id = str(fb.get("recipe_id"))
         action = str(fb.get("action", ""))
+
+        label = _label_from_action(action)
+        if label is None:
+            continue
 
         cosine = float(fb.get("score_shown") or 0.0)
         # we did not store coverage / urgent_used separately on the feedback
@@ -76,12 +87,17 @@ async def train_personal_ranker() -> dict[str, Any]:
                 float(popularity.get(recipe_id, 0.0)),
             ]
         )
-        labels.append(_label_from_action(action))
+        labels.append(label)
+        weights.append(_sample_weight_for_action(action))
+
+    if not rows:
+        return {"status": "no_trainable_feedback", "samples": 0}
 
     X = np.array(rows, dtype=np.float32)
     y = np.array(labels, dtype=np.int32)
+    w = np.array(weights, dtype=np.float32)
 
-    result = ranker.fit(X, y)
+    result = ranker.fit(X, y, sample_weight=w)
     result.update({"feature_names": FEATURE_NAMES, "total_events": len(feedback)})
     log.info("PersonalRanker training result: %s", result)
     return result

@@ -97,7 +97,7 @@ def build_recipe_out(
         image=m.recipe.get("image"),
         urgentIngredientsUsed=m.urgent_used,
         score=round(m.score, 4),
-        personalRank=round(personal_rank, 6) if personal_rank is not None else None,
+        personalRank=round(personal_rank * 100, 1) if personal_rank is not None else None,
         mlInsight=ml_insight,
     )
 

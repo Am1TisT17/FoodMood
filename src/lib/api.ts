@@ -51,6 +51,8 @@ export interface RecipeIngredientDTO {
   name: string; amount: string; inPantry: boolean;
 }
 
+export type RecipeUserPreference = 'liked' | 'disliked';
+
 export interface RecipeDTO {
   id: string;
   name: string;
@@ -62,6 +64,9 @@ export interface RecipeDTO {
   image: string;
   /** ML-only: personal relevance score (0-100). Higher = more relevant for this user. */
   personalRank?: number;
+  mlInsight?: string;
+  /** Saved taste from like / dismiss actions */
+  userPreference?: RecipeUserPreference;
 }
 
 /** Metadata about how recommendations were generated. */
@@ -84,6 +89,8 @@ export interface RecommendRecipesResponseDTO {
   source: string;
   /** Metadata about generation */
   meta: RecommendMetaDTO;
+  /** recipeId -> liked | disliked */
+  preferences?: Record<string, RecipeUserPreference>;
 }
 
 export interface CommunityListingDTO {
@@ -124,17 +131,23 @@ export interface NotificationDTO {
 }
 
 // ───── Feedback DTO for ML learning loop ─────
-export type RecipeFeedbackAction = 'view' | 'cooked' | 'dismissed' | 'saved' | 'shared';
+export type RecipeFeedbackAction =
+  | 'view'
+  | 'cooked'
+  | 'dismissed'
+  | 'like'
+  | 'liked'
+  | 'unliked'
+  | 'clear';
 
 export interface RecipeFeedbackDTO {
   recipeId: string;
   action: RecipeFeedbackAction;
-  /** Optional: source from the recommendation response that produced this recipe */
   source?: string;
-  /** Optional: timestamp when the action happened */
   timestamp?: string;
-  /** Optional: any extra context (e.g. time spent viewing) */
-  metadata?: Record<string, any>;
+  scoreShown?: number;
+  personalRank?: number;
+  matchPercentage?: number;
 }
 
 // ───── API surface ─────
@@ -184,13 +197,21 @@ export const api = {
   /** Send user interaction with a recipe back to the backend for ML training.
    *  The backend forwards this to /feedback on the ML service. */
   sendRecipeFeedback: (feedback: RecipeFeedbackDTO) =>
-    request<{ ok: true }>('/api/recipes/feedback', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...feedback,
-        timestamp: feedback.timestamp || new Date().toISOString(),
-      }),
-    }),
+    request<{ ok: true; preference: RecipeUserPreference | null }>(
+      '/api/recipes/feedback',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...feedback,
+          timestamp: feedback.timestamp || new Date().toISOString(),
+        }),
+      }
+    ),
+
+  getRecipePreferences: () =>
+    request<{ preferences: Record<string, RecipeUserPreference> }>(
+      '/api/recipes/preferences'
+    ),
 
   // Scanner
   scanReceipt: (file: File) => {

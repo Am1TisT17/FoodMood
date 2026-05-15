@@ -26,6 +26,7 @@ export interface Recipe {
   personalRank?: number;
   /** ML-only: human readable insight */
   mlInsight?: string;
+  userPreference?: 'liked' | 'disliked';
 }
 
 export interface CommunityListing {
@@ -69,6 +70,10 @@ interface FoodMoodContextType {
   discardItem: (id: string) => Promise<void>;
   shareItem: (id: string) => Promise<void>;
   useRecipe: (recipeId: string) => Promise<void>;
+  setRecipePreference: (
+    recipeId: string,
+    preference: 'liked' | 'disliked' | null
+  ) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -177,6 +182,34 @@ export function FoodMoodProvider({ children }: { children: ReactNode }) {
     setUserStats(stats);
     const { items } = await api.listInventory();
     setInventory(items as FoodItem[]);
+    setRecipes((prev) =>
+      prev.map((r) => (r.id === recipeId ? { ...r, userPreference: 'liked' as const } : r))
+    );
+  };
+
+  const setRecipePreference = async (
+    recipeId: string,
+    preference: 'liked' | 'disliked' | null
+  ) => {
+    const recipe = recipes.find((r) => r.id === recipeId);
+    await api.sendRecipeFeedback({
+      recipeId,
+      action:
+        preference === null
+          ? 'clear'
+          : preference === 'liked'
+            ? 'liked'
+            : 'unliked',
+      personalRank: recipe?.personalRank,
+      matchPercentage: recipe?.matchPercentage,
+    });
+    setRecipes((prev) =>
+      prev.map((r) =>
+        r.id === recipeId
+          ? { ...r, userPreference: preference ?? undefined }
+          : r
+      )
+    );
   };
 
   return (
@@ -196,6 +229,7 @@ export function FoodMoodProvider({ children }: { children: ReactNode }) {
         discardItem,
         shareItem,
         useRecipe,
+        setRecipePreference,
         refresh,
       }}
     >

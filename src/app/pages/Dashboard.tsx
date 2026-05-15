@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { motion } from "motion/react";
 import { api, RecipeFeedbackAction } from "../../lib/api";
+import { formatPersonalRankLabel, personalRankPercent } from "../../lib/mlFormat";
 
 const weeklyData = [
   { day: "Mon", waste: 2, consumed: 8 },
@@ -436,10 +437,10 @@ export function Dashboard() {
                             Personalized
                           </span>
                         )}
-                        {recipe.personalRank !== undefined && (
+                        {personalRankPercent(recipe.personalRank) != null && (
                           <span className="px-2 py-0.5 bg-white/90 text-indigo-600 border border-indigo-200 text-[10px] font-medium rounded-lg flex items-center">
                             <Star className="w-3 h-3 mr-1" />
-                            {recipe.personalRank}% Relevance
+                            {formatPersonalRankLabel(recipe.personalRank)} Relevance
                           </span>
                         )}
                       </div>

@@ -12,8 +12,70 @@ import {
   isSpoonacularConfigured,
 } from '../services/spoonacularClient.js';
 import { computeStatsDelta, applyDelta } from '../services/statsCalculator.js';
+import {
+  attachPreferencesToRecipes,
+  getPreferencesMap,
+  preferenceFromAction,
+  setRecipePreference,
+  clearRecipePreference,
+  toMlFeedbackAction,
+} from '../services/recipePreferences.js';
 
 const router = Router();
+
+const feedbackBodySchema = z.object({
+  recipeId: z.string().min(1).optional(),
+  action: z.enum([
+    'view',
+    'cook',
+    'cooked',
+    'dismiss',
+    'dismissed',
+    'like',
+    'liked',
+    'unliked',
+    'unlike',
+    'clear',
+  ]),
+  scoreShown: z.number().optional(),
+  daysToExpiry: z.number().int().optional(),
+  canonicalTarget: z.string().optional(),
+  personalRank: z.number().optional(),
+  matchPercentage: z.number().optional(),
+});
+
+async function handleRecipeFeedback(userId, recipeId, body) {
+  if (body.action === 'clear') {
+    await clearRecipePreference(userId, recipeId);
+    return;
+  }
+
+  const mlAction = toMlFeedbackAction(body.action);
+  if (mlAction) {
+    const scoreShown =
+      body.scoreShown ??
+      (typeof body.personalRank === 'number'
+        ? body.personalRank <= 1
+          ? body.personalRank
+          : body.personalRank / 100
+        : undefined);
+    sendMlFeedback({
+      userId: userId.toString(),
+      recipeId,
+      action: mlAction,
+      canonicalTarget: body.canonicalTarget,
+      scoreShown,
+      daysToExpiry: body.daysToExpiry,
+    });
+  }
+
+  const pref = preferenceFromAction(body.action);
+  if (pref === 'liked') {
+    await setRecipePreference(userId, recipeId, 'liked');
+  } else if (pref === 'disliked') {
+    await setRecipePreference(userId, recipeId, 'disliked');
+  }
+}
 
 // Public: list all recipes (no ranking, no auth).
 router.get('/', async (req, res) => {
@@ -31,6 +93,24 @@ router.get('/', async (req, res) => {
     })),
   });
 });
+
+router.get('/preferences', authRequired, async (req, res) => {
+  const preferences = await getPreferencesMap(req.userId);
+  res.json({ preferences });
+});
+
+router.post(
+  '/feedback',
+  authRequired,
+  validate({ body: feedbackBodySchema }),
+  async (req, res) => {
+    const recipeId = req.body.recipeId;
+    if (!recipeId) return res.status(400).json({ error: 'recipeId is required' });
+    await handleRecipeFeedback(req.userId, recipeId, req.body);
+    const preferences = await getPreferencesMap(req.userId);
+    res.json({ ok: true, preference: preferences[recipeId] || null });
+  }
+);
 
 router.get('/:id', async (req, res) => {
   let r = await Recipe.findById(req.params.id);
@@ -78,12 +158,16 @@ async function getRecommendations(pantry, limit, userId) {
 router.get('/recommend/me', authRequired, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit || '12', 10), 25);
   const pantry = await FoodItem.find({ user: req.userId, status: 'active' }).lean();
-  const result = await getRecommendations(pantry, limit, req.userId);
+  const [result, preferences] = await Promise.all([
+    getRecommendations(pantry, limit, req.userId),
+    getPreferencesMap(req.userId),
+  ]);
   res.json({
-    recipes: result.recipes,
+    recipes: attachPreferencesToRecipes(result.recipes, preferences),
     source: result.source,
     meta: result.meta || null,
     modelVersion: result.modelVersion || null,
+    preferences,
   });
 });
 
@@ -123,30 +207,15 @@ router.post(
   }
 );
 
-// Recipe interaction feedback — forwarded to ML's personal ranker.
-// Frontend calls this on view / cook / dismiss / like so the ranker can learn.
+// Recipe interaction feedback — ML ranker + liked/disliked persistence.
 router.post(
   '/:id/feedback',
   authRequired,
-  validate({
-    body: z.object({
-      action: z.enum(['view', 'cook', 'dismiss', 'like']),
-      scoreShown: z.number().optional(),
-      daysToExpiry: z.number().int().optional(),
-      canonicalTarget: z.string().optional(),
-    }),
-  }),
+  validate({ body: feedbackBodySchema.omit({ recipeId: true }) }),
   async (req, res) => {
-    // Fire-and-forget — never block the UI on ML availability.
-    sendMlFeedback({
-      userId: req.userId.toString(),
-      recipeId: req.params.id,
-      action: req.body.action,
-      canonicalTarget: req.body.canonicalTarget,
-      scoreShown: req.body.scoreShown,
-      daysToExpiry: req.body.daysToExpiry,
-    });
-    res.json({ ok: true });
+    await handleRecipeFeedback(req.userId, req.params.id, req.body);
+    const preferences = await getPreferencesMap(req.userId);
+    res.json({ ok: true, preference: preferences[req.params.id] || null });
   }
 );
 

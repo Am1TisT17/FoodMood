@@ -44,6 +44,13 @@ function internalHeaders(extra = {}) {
   return { 'X-Internal-Key': env.ML_INTERNAL_API_KEY, ...extra };
 }
 
+/** ML sends personalRank as 0–100; tolerate legacy 0–1 responses. */
+function normalizePersonalRank(v) {
+  if (v == null || typeof v !== 'number' || Number.isNaN(v)) return null;
+  const pct = v <= 1 ? v * 100 : v;
+  return Math.round(Math.min(100, Math.max(0, pct)));
+}
+
 // Normalize a single ML recipe into the frontend DTO, preserving the
 // ML-specific explainability fields (urgentIngredientsUsed, score, personalRank).
 function parseRecipe(r) {
@@ -62,7 +69,7 @@ function parseRecipe(r) {
     image: r.image || r.image_url || '',
     urgentIngredientsUsed: r.urgentIngredientsUsed || [],
     score: typeof r.score === 'number' ? r.score : undefined,
-    personalRank: r.personalRank ?? null,
+    personalRank: normalizePersonalRank(r.personalRank),
     mlInsight: r.mlInsight || null,
   };
 }

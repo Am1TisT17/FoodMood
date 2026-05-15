@@ -13,9 +13,9 @@ FeedbackAction = Literal["view", "cook", "dismiss", "like"]
 
 # weight per action — used by the ranker as the supervised label
 ACTION_WEIGHT: dict[str, float] = {
-    "dismiss": 0.0,
-    "view": 0.3,
-    "like": 0.8,
+    "dismiss": 1.0,
+    "view": 0.15,
+    "like": 0.9,
     "cook": 1.0,
 }
 
@@ -93,6 +93,27 @@ async def recipe_popularity() -> dict[str, float]:
     async for row in cursor:
         n = max(int(row["n"]), 1)
         out[str(row["_id"])] = float(row["sum_w"]) / n
+    return out
+
+
+async def user_recipe_preferences(user_id: str) -> dict[str, str]:
+    """Latest explicit taste per recipe: 'liked' | 'disliked' from feedback history."""
+    db = get_db()
+    cursor = (
+        db[feedback_collection_name()]
+        .find({"user_id": str(user_id)})
+        .sort("createdAt", 1)
+    )
+    out: dict[str, str] = {}
+    async for doc in cursor:
+        recipe_id = str(doc.get("recipe_id", ""))
+        action = str(doc.get("action", ""))
+        if not recipe_id:
+            continue
+        if action in ("like", "cook"):
+            out[recipe_id] = "liked"
+        elif action == "dismiss":
+            out[recipe_id] = "disliked"
     return out
 
 
