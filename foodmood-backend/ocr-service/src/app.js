@@ -45,7 +45,7 @@ app.post('/ocr/scan', upload.single('image'), async (req, res) => {
     const cleaned = await preprocessReceipt(req.file.buffer);
     const worker = await getWorker();
     const result = await worker.recognize(cleaned);
-    const items = parseReceipt(result);
+    const items = await parseReceipt(result);
     res.json({
       items,
       rawText: result.data.text,

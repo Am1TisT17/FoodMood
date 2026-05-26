@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -7,6 +7,36 @@ import { Leaf, Eye, EyeOff, Mail, Lock, User, Check, ArrowLeft } from "lucide-re
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { api } from "../../lib/api";
+
+// Google Identity Services — loaded once per page, regardless of how many
+// Google buttons the screen has. The script exposes `window.google.accounts.id`.
+const GOOGLE_GSI_SRC = "https://accounts.google.com/gsi/client";
+const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "";
+
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
+
+function loadGsiScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.google?.accounts?.id) return resolve();
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${GOOGLE_GSI_SRC}"]`);
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => reject(new Error("Failed to load Google script")));
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = GOOGLE_GSI_SRC;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Google script"));
+    document.head.appendChild(script);
+  });
+}
 
 export function Login() {
   const navigate = useNavigate();
@@ -26,6 +56,72 @@ export function Login() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
+
+  // Google sign-in state — controls disabled state of the two Google buttons.
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const initializedRef = useRef(false);
+
+  // Lazily load the Google Identity Services script on first mount. If
+  // VITE_GOOGLE_CLIENT_ID is not configured we skip loading entirely so the
+  // diploma defence environment can still run end-to-end without Google.
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+    loadGsiScript().catch(() => {
+      /* network blocked / offline — fall through, button will toast on click */
+    });
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    if (!GOOGLE_CLIENT_ID) {
+      toast.error("Google sign-in is not configured (VITE_GOOGLE_CLIENT_ID missing).");
+      return;
+    }
+    setGoogleLoading(true);
+    try {
+      await loadGsiScript();
+      if (!window.google?.accounts?.id) {
+        throw new Error("Google library failed to load");
+      }
+      // Initialize once; subsequent prompts re-use the registered callback.
+      if (!initializedRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: async (response: { credential?: string }) => {
+            if (!response?.credential) {
+              setGoogleLoading(false);
+              toast.error("Google did not return a credential");
+              return;
+            }
+            try {
+              const r = await api.googleSignIn(response.credential);
+              toast.success(`Welcome, ${r.user.name}!`);
+              navigate("/dashboard");
+            } catch (err: any) {
+              toast.error(err?.message || "Google sign-in failed on the server");
+            } finally {
+              setGoogleLoading(false);
+            }
+          },
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        initializedRef.current = true;
+      }
+      // Show One Tap / account-chooser. If it can't be shown (3rd-party cookies
+      // disabled, no Google session, etc.) we surface a helpful message.
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
+          setGoogleLoading(false);
+          toast.info(
+            "Google prompt was suppressed by the browser. Try enabling third-party cookies or use email sign-in."
+          );
+        }
+      });
+    } catch (err: any) {
+      setGoogleLoading(false);
+      toast.error(err?.message || "Could not start Google sign-in");
+    }
+  };
 
   // Mobile tab
   const [mobileTab, setMobileTab] = useState<"login" | "signup">("login");
@@ -138,8 +234,9 @@ export function Login() {
               {/* Social Login */}
               <div className="space-y-3 mb-6">
                 <button
-                  onClick={() => { toast.info("Google login coming soon!"); }}
-                  className="w-full h-11 flex items-center justify-center gap-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors text-sm font-medium text-[#4A5568]"
+                  onClick={handleGoogleSignIn}
+                  disabled={googleLoading}
+                  className="w-full h-11 flex items-center justify-center gap-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors text-sm font-medium text-[#4A5568] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -147,7 +244,7 @@ export function Login() {
                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
-                  Continue with Google
+                  {googleLoading ? "Opening Google…" : "Continue with Google"}
                 </button>
               </div>
 
@@ -264,8 +361,9 @@ export function Login() {
               {/* Social Sign Up */}
               <div className="space-y-3 mb-6">
                 <button
-                  onClick={() => { toast.info("Google sign up coming soon!"); }}
-                  className="w-full h-11 flex items-center justify-center gap-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-sm font-medium text-white border border-white/10"
+                  onClick={handleGoogleSignIn}
+                  disabled={googleLoading}
+                  className="w-full h-11 flex items-center justify-center gap-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-sm font-medium text-white border border-white/10 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -273,7 +371,7 @@ export function Login() {
                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
-                  Continue with Google
+                  {googleLoading ? "Opening Google…" : "Continue with Google"}
                 </button>
               </div>
 

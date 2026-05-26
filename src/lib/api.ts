@@ -7,17 +7,54 @@
 const BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:4000';
 const TOKEN_KEY = 'foodmood_token';
 
+// Event name dispatched on every token change in the current tab.
+// FoodMoodContext listens to this and re-fetches or resets its state, since
+// the browser's native `storage` event only fires in OTHER tabs.
+export const AUTH_EVENT = 'foodmood:auth-changed';
+
 export const auth = {
   getToken: () => localStorage.getItem(TOKEN_KEY),
   setToken: (t: string | null) => {
     if (t) localStorage.setItem(TOKEN_KEY, t);
     else localStorage.removeItem(TOKEN_KEY);
+    // Notify same-tab listeners (login on tab A should refresh tab A too).
+    try {
+      window.dispatchEvent(new CustomEvent(AUTH_EVENT, { detail: { token: t } }));
+    } catch {
+      /* SSR / very old browser — silently ignore */
+    }
   },
   isAuthenticated: () => !!localStorage.getItem(TOKEN_KEY),
 };
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = auth.getToken();
+// Single in-flight refresh promise — prevents N concurrent requests from
+// firing N parallel /refresh calls when the access token expires.
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include', // send the httpOnly refresh cookie
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const newToken = data?.accessToken || data?.token || null;
+      if (newToken) auth.setToken(newToken);
+      return newToken;
+    } catch {
+      return null;
+    } finally {
+      // Allow the next failed request to trigger a fresh refresh attempt.
+      setTimeout(() => { refreshInFlight = null; }, 0);
+    }
+  })();
+  return refreshInFlight;
+}
+
+async function doFetch(path: string, init: RequestInit, token: string | null): Promise<Response> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(init.headers as Record<string, string>),
@@ -26,8 +63,22 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers['Content-Type'] = 'application/json';
   }
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  // credentials:'include' lets the browser attach the httpOnly refresh cookie.
+  return fetch(`${BASE_URL}${path}`, { ...init, headers, credentials: 'include' });
+}
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  let res = await doFetch(path, init, auth.getToken());
+
+  // 401 on a protected route → try a silent refresh, then retry once.
+  // We skip retrying on auth endpoints themselves to avoid loops.
+  if (res.status === 401 && !path.startsWith('/api/auth/')) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      res = await doFetch(path, init, newToken);
+    }
+  }
+
   if (!res.ok) {
     let body: any = null;
     try { body = await res.json(); } catch {}
@@ -154,15 +205,38 @@ export interface RecipeFeedbackDTO {
 export const api = {
   // Auth
   register: (body: { name: string; email: string; password: string }) =>
-    request<{ token: string; user: UserDTO }>('/api/auth/register', {
+    request<{ token: string; accessToken?: string; user: UserDTO }>('/api/auth/register', {
       method: 'POST', body: JSON.stringify(body),
-    }).then((r) => { auth.setToken(r.token); return r; }),
+    }).then((r) => { auth.setToken(r.accessToken || r.token); return r; }),
   login: (body: { email: string; password: string }) =>
-    request<{ token: string; user: UserDTO }>('/api/auth/login', {
+    request<{ token: string; accessToken?: string; user: UserDTO }>('/api/auth/login', {
       method: 'POST', body: JSON.stringify(body),
-    }).then((r) => { auth.setToken(r.token); return r; }),
+    }).then((r) => { auth.setToken(r.accessToken || r.token); return r; }),
+  // Sign in with the ID token Google Identity Services returned in-browser.
+  googleSignIn: (idToken: string) =>
+    request<{ token: string; accessToken?: string; user: UserDTO }>('/api/auth/google', {
+      method: 'POST', body: JSON.stringify({ idToken }),
+    }).then((r) => { auth.setToken(r.accessToken || r.token); return r; }),
   me: () => request<{ user: UserDTO }>('/api/auth/me'),
-  logout: () => { auth.setToken(null); },
+  logout: async () => {
+    // Clears both the in-memory access token and the server-side httpOnly cookie.
+    try { await request('/api/auth/logout', { method: 'POST' }); } catch {}
+    auth.setToken(null);
+  },
+  verifyEmail: (token: string) =>
+    request<{ ok: true; user: UserDTO }>(`/api/auth/verify-email/${encodeURIComponent(token)}`),
+  resendVerification: () =>
+    request<{ ok: true; alreadyVerified?: boolean }>('/api/auth/resend-verification', {
+      method: 'POST',
+    }),
+  forgotPassword: (email: string) =>
+    request<{ ok: true }>('/api/auth/forgot-password', {
+      method: 'POST', body: JSON.stringify({ email }),
+    }),
+  resetPassword: (token: string, password: string) =>
+    request<{ ok: true }>('/api/auth/reset-password', {
+      method: 'POST', body: JSON.stringify({ token, password }),
+    }),
 
   // Inventory
   listInventory: () => request<{ items: FoodItemDTO[] }>('/api/inventory'),

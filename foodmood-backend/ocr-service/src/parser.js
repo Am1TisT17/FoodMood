@@ -1,7 +1,13 @@
 // Domain-specific parser for grocery receipts.
 // Input: raw OCR text + per-word confidence (Tesseract result).
 // Output: ScannedItem[] aligned with frontend Scanner.tsx shape:
-//   { name: string, price: string, expiryDate: string, confidence: number }
+//   { name: string, price: string, expiryDate: string, confidence: number, currency: 'KZT', ... }
+//
+// All prices are converted to KZT (tenge) automatically. The source currency
+// is detected from the receipt text (symbols + ISO codes + words). If the
+// receipt is already in tenge, no conversion happens.
+
+import { detectCurrency, convertItemsToKzt } from './currencyConverter.js';
 
 const NOISE = [
   // Totals & taxes
@@ -83,26 +89,6 @@ const CATEGORY_KEYWORDS = {
   Beverages: ['juice', 'cola', 'water', 'tea', 'coffee', 'soda'],
 };
 
-const NON_FOOD_KEYWORDS = [
-  'shampoo', 'soap', 'body wash', 'shower gel', 'lotion', 'cream', 'deodorant',
-  'toothpaste', 'toothbrush', 'razor', 'shaving', 'diaper', 'pampers', 'wipes',
-  'detergent', 'softener', 'bleach', 'cleaner', 'spray', 'sponge', 'dish',
-  'toilet', 'paper', 'tissue', 'napkin', 'towel',
-  'battery', 'batteries', 'bulb', 'glue', 'tape',
-  'foil', 'wrap', 'trash', 'bag', 'bags',
-  'cat food', 'dog food', 'pet food', 'whiskas', 'pedigree',
-  'fairy', 'tide', 'ariel', 'bref', 'domestos', 'persil',
-  'шампунь', 'мыло', 'гель', 'порошок', 'кондиционер', 'отбеливатель',
-  'памперсы', 'подгузники', 'прокладки', 'салфетки', 'бумага',
-  'батарейки', 'лампочка', 'губка', 'пакет', 'мешки', 'пленка', 'фольга',
-  'корм', 'кошачий', 'собачий'
-];
-
-function isNonFood(name) {
-  const lower = name.toLowerCase();
-  return NON_FOOD_KEYWORDS.some((kw) => lower.includes(kw));
-}
-
 function classifyCategory(name) {
   const lower = name.toLowerCase();
   for (const [cat, kws] of Object.entries(CATEGORY_KEYWORDS)) {
@@ -111,11 +97,12 @@ function classifyCategory(name) {
   return 'Other';
 }
 
-const TOTAL_PRICE_RE = /([0-9]{1,4}[.,][0-9]{2})\s*\$?\s*$/;
+const TOTAL_PRICE_RE = /([0-9]{1,4}[.,][0-9]{2})\s*[$₸₽€]?\s*$/;
 const UNIT_TOKENS = '(?:lb|1b|ib|lbs|oz|g|kg|kgs|gr|gms|ml|mls|l|gal|gals|qt|qts|pt|pts)';
 
 const NAME_STRIPPERS = [
-  /\$\s*\d+([.,]\d{1,2})?/g,
+  /[$₸₽€]\s*\d+([.,]\d{1,2})?/g,
+  /\d+([.,]\d{1,2})?\s*[$₸₽€]/g,
   new RegExp('\\/\\s*\\d*\\s*' + UNIT_TOKENS + '\\b', 'gi'),
   new RegExp('\\b\\d+(?:[.,]\\d+)?\\s*' + UNIT_TOKENS + '\\b', 'gi'),
   /\([^)]*\)/g,
@@ -158,8 +145,8 @@ function cleanName(raw) {
   for (const re of NAME_STRIPPERS) s = s.replace(re, ' ');
   return s
     .replace(/\s{2,}/g, ' ')
-    .replace(/^[^a-zA-Zа-яА-ЯёЁ]+/, '')
-    .replace(/[^a-zA-Zа-яА-ЯёЁ0-9\s]+$/, '')
+    .replace(/^[^a-zA-Z]+/, '')
+    .replace(/[^a-zA-Z0-9\s]+$/, '')
     .trim();
 }
 
@@ -180,9 +167,16 @@ function structureConfidence(name, priceMatched) {
   return score;
 }
 
-export function parseReceipt(ocrResult) {
+export async function parseReceipt(ocrResult) {
   const text = ocrResult.data?.text || '';
   const lines = text.split(/\r?\n/);
+
+  // Detect currency from the FULL text (so e.g. one `$` at the bottom marks
+  // the whole receipt as USD even if individual lines don't repeat the symbol).
+  // If nothing is detected, default to USD — matches the most common English
+  // test receipts. Receipts that include ₸/тг/тенге get tagged as KZT and
+  // skip conversion entirely.
+  const sourceCurrency = detectCurrency(text) || 'USD';
 
   const lineConfidence = {};
   for (const w of ocrResult.data?.words || []) {
@@ -204,9 +198,8 @@ export function parseReceipt(ocrResult) {
 
     const name = cleanName(line);
     if (!name || name.length < 2) continue;
-    if (!/[a-zA-Zа-яА-ЯёЁ]/.test(name)) continue;
+    if (!/[a-zA-Z]/.test(name)) continue;
     if (looksLikeGarbage(name)) continue;
-    if (isNonFood(name)) continue;
 
     const lineConfData = lineConfidence[rawLine] || lineConfidence[line];
     const ocrConf = lineConfData ? lineConfData.sum / lineConfData.count : 75;
@@ -226,5 +219,12 @@ export function parseReceipt(ocrResult) {
       unit: 'pcs',
     });
   }
+
+  // Convert all prices to integer tenge. Preserves originalPrice +
+  // originalCurrency so the UI / DB can show "was $3.49 → 1675 ₸" if it wants.
+  // Live rates from open.er-api.com (cached 12h); on timeout fallback rates
+  // kick in so the scanner never breaks.
+  await convertItemsToKzt(items, sourceCurrency);
+
   return items;
 }

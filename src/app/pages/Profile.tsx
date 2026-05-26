@@ -148,7 +148,7 @@ export function Profile() {
                       <DollarSign className="w-4 h-4 text-[#B2D2A4]" />
                       <span className="text-sm text-[#4A5568]/70">Saved</span>
                     </div>
-                    <span className="font-bold text-[#4A5568]">${userStats.moneySaved.toFixed(0)}</span>
+                    <span className="font-bold text-[#4A5568]">{Math.round(userStats.moneySaved).toLocaleString('ru-RU')} ₸</span>
                   </div>
                 </div>
               </Card>

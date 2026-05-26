@@ -103,7 +103,7 @@ export function Dashboard() {
     },
     {
       label: "Money Saved",
-      value: `$${userStats.moneySaved.toFixed(0)}`,
+      value: `${Math.round(userStats.moneySaved).toLocaleString('ru-RU')} ₸`,
       sublabel: "↑ 18% vs last month",
       icon: DollarSign,
       color: "text-[#4A5568]",

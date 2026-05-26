@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 
 import { env } from './config/env.js';
 import authRoutes from './routes/auth.js';
@@ -32,6 +33,9 @@ export function createApp() {
     })
   );
   app.use(express.json({ limit: '2mb' }));
+  // Cookie parser is required for reading the httpOnly refresh-token cookie
+  // set by /api/auth/login, /register and /refresh.
+  app.use(cookieParser());
   app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
   app.use(

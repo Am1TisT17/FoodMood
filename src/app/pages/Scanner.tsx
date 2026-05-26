@@ -8,16 +8,33 @@ import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
-import { Camera, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { Camera, Upload, CheckCircle2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 
+// Tenge-aware scanned item shape. The OCR service converts every price to
+// integer KZT and (optionally) attaches the original value/currency so we can
+// show e.g. "was $3.49" under the converted field.
 interface ScannedItem {
   name: string;
   price: string;
   expiryDate: string;
   confidence: number;
+  currency?: string;
+  originalPrice?: string;
+  originalCurrency?: string;
+  category?: string;
+  quantity?: number;
+  unit?: string;
 }
+
+// Currency symbols for the "was X" hint under each converted price.
+const CURRENCY_SYMBOL: Record<string, string> = {
+  USD: "$",
+  RUB: "₽",
+  EUR: "€",
+  KZT: "₸",
+};
 
 export function Scanner() {
   const navigate = useNavigate();
@@ -34,16 +51,22 @@ export function Scanner() {
   const handleFile = async (file: File) => {
     setScanning(true);
     try {
-      const parsed = await api.scanReceipt(file);
-      if (!parsed || !parsed.items || parsed.items.length === 0) {
-        toast.error("Couldn't read any food items from the receipt. Try a clearer photo.");
+      const parsed: any = await api.scanReceipt(file);
+      const arr = Array.isArray(parsed?.items)
+        ? parsed.items
+        : Array.isArray(parsed)
+        ? parsed
+        : [];
+      if (arr.length === 0) {
+        toast.error(parsed?.error || "Couldn't read any food items from the receipt. Try a clearer photo.");
         setScanning(false);
         return;
       }
-      setItems(parsed.items || []);
+      setItems(arr);
       setScanned(true);
-      if (parsed.filteredOutCount > 0) {
-        toast.success(`Receipt scanned. AI filtered out ${parsed.filteredOutCount} non-food item(s) automatically.`);
+      const filteredOut = Number(parsed.filteredOutCount) || 0;
+      if (filteredOut > 0) {
+        toast.success(`Receipt scanned. AI filtered out ${filteredOut} non-food item(s) automatically.`);
       } else {
         toast.success(`Receipt scanned — found ${parsed.items?.length || 0} items`);
       }
@@ -59,20 +82,76 @@ export function Scanner() {
 
   const handleItemChange = (index: number, field: keyof ScannedItem, value: string) => {
     const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
+    newItems[index] = { ...newItems[index], [field]: value } as ScannedItem;
     setItems(newItems);
   };
 
+  // Tenge prices are whole integers — sanitize on change.
+  const handlePriceChange = (index: number, value: string) => {
+    const cleaned = value.replace(/[^\d]/g, "");
+    handleItemChange(index, "price", cleaned);
+  };
+
+  // Default expiry — one week from today, so a freshly typed item still has
+  // a sensible date until the user picks one explicitly.
+  const defaultExpiryISO = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().split("T")[0];
+  };
+
+  const handleAddBlankItem = () => {
+    setItems([
+      ...items,
+      {
+        name: "",
+        price: "0",
+        expiryDate: defaultExpiryISO(),
+        confidence: 100, // manual entry — full trust
+        category: "Other",
+        quantity: 1,
+        unit: "pcs",
+      },
+    ]);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  // Empty-state shortcut: lets the user jump straight to manual entry without
+  // scanning a receipt at all.
+  const handleStartManualEntry = () => {
+    setItems([
+      {
+        name: "",
+        price: "0",
+        expiryDate: defaultExpiryISO(),
+        confidence: 100,
+        category: "Other",
+        quantity: 1,
+        unit: "pcs",
+      },
+    ]);
+    setScanned(true);
+  };
+
   const handleAddToPantry = async () => {
+    // Drop empty rows the user may have added but not filled in.
+    const validItems = items.filter((it) => it.name.trim().length > 0);
+    if (validItems.length === 0) {
+      toast.error("Add at least one item with a name before saving.");
+      return;
+    }
     setSaving(true);
     try {
       await api.addItemsBatch(
-        items.map((item) => ({
-          name: item.name,
-          category: "Other",
-          quantity: 1,
-          unit: "pcs",
-          price: parseFloat(item.price) || 0,
+        validItems.map((item) => ({
+          name: item.name.trim(),
+          category: item.category || "Other",
+          quantity: item.quantity || 1,
+          unit: item.unit || "pcs",
+          price: parseInt(item.price, 10) || 0,
           expiryDate: item.expiryDate,
           addedDate: new Date().toISOString().split("T")[0],
         })) as any
@@ -170,6 +249,15 @@ export function Scanner() {
                           <Upload className="w-5 h-5 mr-2" />
                           Upload Image
                         </Button>
+                        <Button
+                          onClick={handleStartManualEntry}
+                          variant="ghost"
+                          size="lg"
+                          className="text-[#4A5568]/70 hover:text-[#4A5568]"
+                        >
+                          <Plus className="w-5 h-5 mr-2" />
+                          Enter Items Manually
+                        </Button>
                       </div>
                     )}
 
@@ -229,9 +317,9 @@ export function Scanner() {
                         3
                       </div>
                       <div>
-                        <h4 className="font-medium text-[#4A5568] mb-1">Verify & Adjust</h4>
+                        <h4 className="font-medium text-[#4A5568] mb-1">Auto-converted to ₸</h4>
                         <p className="text-sm text-[#4A5568]/60">
-                          Review and edit any information before adding to your pantry
+                          Prices in USD or RUB are converted to tenge automatically using live rates
                         </p>
                       </div>
                     </div>
@@ -261,53 +349,119 @@ export function Scanner() {
                   <h2 className="text-xl font-semibold text-[#4A5568]">
                     Verify Scanned Items
                   </h2>
-                  <Badge className="bg-green-500 text-white">
-                    <CheckCircle2 className="w-4 h-4 mr-1" />
-                    Scan Complete
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleAddBlankItem}
+                      variant="outline"
+                      size="sm"
+                      className="border-[#B2D2A4] text-[#4A5568] hover:bg-[#B2D2A4]/10"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Item
+                    </Button>
+                    <Badge className="bg-green-500 text-white">
+                      <CheckCircle2 className="w-4 h-4 mr-1" />
+                      Scan Complete
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="space-y-4 mb-6">
-                  {items.map((item, index) => (
-                    <div key={index} className="p-4 border rounded-xl hover:border-[#B2D2A4] transition-colors">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-medium text-[#4A5568]">Item {index + 1}</span>
-                        <Badge
-                          variant="outline"
-                          className={item.confidence < 85 ? "border-amber-500 text-amber-500" : "border-green-500 text-green-500"}
-                        >
-                          {item.confidence < 85 && <AlertCircle className="w-3 h-3 mr-1" />}
-                          {item.confidence}% confidence
-                        </Badge>
-                      </div>
+                  {items.map((item, index) => {
+                    const wasConverted =
+                      !!item.originalCurrency &&
+                      item.originalCurrency !== "KZT" &&
+                      !!item.originalPrice;
+                    const symbol = wasConverted
+                      ? CURRENCY_SYMBOL[item.originalCurrency as string] || ""
+                      : "";
+                    return (
+                      <div
+                        key={index}
+                        className="p-4 border rounded-xl hover:border-[#B2D2A4] transition-colors"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-medium text-[#4A5568]">
+                            Item {index + 1}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={
+                                item.confidence < 85
+                                  ? "border-amber-500 text-amber-500"
+                                  : "border-green-500 text-green-500"
+                              }
+                            >
+                              {item.confidence < 85 && (
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                              )}
+                              {item.confidence}% confidence
+                            </Badge>
+                            <Button
+                              onClick={() => handleRemoveItem(index)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                              aria-label={`Remove item ${index + 1}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="text-xs text-[#4A5568]/60 mb-1 block">Item Name</label>
-                          <Input
-                            value={item.name}
-                            onChange={(e) => handleItemChange(index, 'name', e.target.value)}
-                            className={item.confidence < 85 ? "border-amber-500" : ""}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-[#4A5568]/60 mb-1 block">Price ($)</label>
-                          <Input
-                            value={item.price}
-                            onChange={(e) => handleItemChange(index, 'price', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-[#4A5568]/60 mb-1 block">Expiry Date</label>
-                          <Input
-                            type="date"
-                            value={item.expiryDate}
-                            onChange={(e) => handleItemChange(index, 'expiryDate', e.target.value)}
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-xs text-[#4A5568]/60 mb-1 block">
+                              Item Name
+                            </label>
+                            <Input
+                              value={item.name}
+                              onChange={(e) =>
+                                handleItemChange(index, "name", e.target.value)
+                              }
+                              className={
+                                item.confidence < 85 ? "border-amber-500" : ""
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-[#4A5568]/60 mb-1 block">
+                              Price (₸)
+                            </label>
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              step="1"
+                              min="0"
+                              value={item.price}
+                              onChange={(e) =>
+                                handlePriceChange(index, e.target.value)
+                              }
+                            />
+                            {wasConverted && (
+                              <p className="text-[10px] text-[#4A5568]/50 mt-1">
+                                was {symbol}
+                                {item.originalPrice}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="text-xs text-[#4A5568]/60 mb-1 block">
+                              Expiry Date
+                            </label>
+                            <Input
+                              type="date"
+                              value={item.expiryDate}
+                              onChange={(e) =>
+                                handleItemChange(index, "expiryDate", e.target.value)
+                              }
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="flex gap-3">

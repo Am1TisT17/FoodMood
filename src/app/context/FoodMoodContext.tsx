@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { api, auth, RecommendMetaDTO } from '../../lib/api';
+import { api, auth, AUTH_EVENT, RecommendMetaDTO } from '../../lib/api';
 
 export interface FoodItem {
   id: string;
@@ -95,10 +95,23 @@ export function FoodMoodProvider({ children }: { children: ReactNode }) {
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Reset every piece of context state to its initial value — used on logout
+  // and on a same-tab account switch, to make absolutely sure no data from the
+  // previous user lingers in React state.
+  const resetState = useCallback(() => {
+    setInventory([]);
+    setRecipes([]);
+    setRecommendationsInfo(null);
+    setCommunityListings([]);
+    setUserStats(defaultStats);
+    setUserName('');
+    setLoading(false);
+  }, []);
+
   // Load everything from the backend after login.
   const refresh = useCallback(async () => {
     if (!auth.isAuthenticated()) {
-      setLoading(false);
+      resetState();
       return;
     }
     setLoading(true);
@@ -124,17 +137,33 @@ export function FoodMoodProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [resetState]);
 
   useEffect(() => {
     refresh();
-    // Re-fetch when another tab logs in/out
+
+    // Re-fetch when the token changes anywhere in the app (same tab or other).
+    // The native `storage` event only fires in OTHER tabs, so we additionally
+    // listen for our custom AUTH_EVENT which auth.setToken dispatches.
+    const onAuthChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      if (detail.token === null) {
+        // Explicit logout — wipe state immediately so the next render is clean.
+        resetState();
+      } else {
+        refresh();
+      }
+    };
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'foodmood_token') refresh();
     };
+    window.addEventListener(AUTH_EVENT, onAuthChange);
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, [refresh]);
+    return () => {
+      window.removeEventListener(AUTH_EVENT, onAuthChange);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [refresh, resetState]);
 
   const addItem = async (item: FoodItem) => {
     const { item: saved } = await api.addItem({

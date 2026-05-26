@@ -145,7 +145,7 @@ export function Pantry() {
                             </div>
                             <div className="text-right">
                               <p className="text-lg font-semibold text-[#4A5568]">
-                                ${item.price.toFixed(2)}
+                                {Math.round(item.price).toLocaleString('ru-RU')} ₸
                               </p>
                             </div>
                           </div>

@@ -214,7 +214,7 @@ export function ShareFood() {
                             <div>
                               <p className="font-medium text-[#4A5568]">{item.name}</p>
                               <p className="text-sm text-[#4A5568]/50">
-                                {item.quantity} {item.unit} • ${item.price.toFixed(2)}
+                                {item.quantity} {item.unit} • {Math.round(item.price).toLocaleString('ru-RU')} ₸
                               </p>
                             </div>
                           </div>

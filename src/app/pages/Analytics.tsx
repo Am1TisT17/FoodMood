@@ -117,7 +117,7 @@ export function Analytics() {
               },
               {
                 label: "Money Saved",
-                value: `$${userStats.moneySaved.toFixed(0)}`,
+                value: `${Math.round(userStats.moneySaved).toLocaleString('ru-RU')} ₸`,
                 icon: DollarSign,
                 change: "+18%",
                 positive: true,

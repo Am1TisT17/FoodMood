@@ -2,6 +2,9 @@ import { createBrowserRouter } from "react-router";
 import { Root } from "./pages/Root";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
+import { ForgotPassword } from "./pages/ForgotPassword";
+import { ResetPassword } from "./pages/ResetPassword";
+import { VerifyEmail } from "./pages/VerifyEmail";
 import { Dashboard } from "./pages/Dashboard";
 import { Pantry } from "./pages/Pantry";
 import { Scanner } from "./pages/Scanner";
@@ -20,6 +23,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: Landing },
       { path: "login", Component: Login },
+      { path: "forgot-password", Component: ForgotPassword },
+      { path: "reset-password", Component: ResetPassword },
+      { path: "verify-email", Component: VerifyEmail },
       { path: "dashboard", Component: Dashboard },
       { path: "pantry", Component: Pantry },
       { path: "scanner", Component: Scanner },
