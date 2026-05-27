@@ -23,6 +23,9 @@ Implemented:
 - food-only filtering for OCR-confirmed items
 - TF-IDF pantry vectorizer
 - recipe matcher using cosine similarity, ingredient coverage, and expiry urgency
+- ingredient-priority scoring from `app/data/ingredient_priority.csv`
+- feedback logging via `POST /feedback`
+- Logistic Regression personal ranker trained by `POST /train`, `POST /train/ranker`, and background refresh after feedback
 - eLCS-based waste rule mining scaffold
 - MongoDB access through Motor
 
@@ -30,7 +33,6 @@ Not yet implemented:
 
 - deep-learning or LLM-based recommendation
 - persistent model artifacts
-- event-log based personalization
 - production-grade receipt/OCR feedback storage
 - large recipe corpus
 - frontend UI for explaining ML scores
@@ -86,10 +88,31 @@ Ranks recipes using:
 - cosine similarity between pantry and recipe ingredients;
 - ingredient coverage ratio;
 - urgency boost for ingredients that expire soon.
+- ingredient-priority boost from the user's ingredient history/priority table.
 
 The final score is not exposed as the primary frontend metric, but it is returned in the ML response for debugging/explainability.
 
-### 3. Waste Rule Mining
+### 3. Personal Ranker
+
+Files:
+
+- `app/models/personal_ranker.py`
+- `app/services/ranker_training.py`
+- `app/services/ranker_rerank.py`
+- `app/routes/feedback.py`
+
+The backend sends `view`, `like`, `dismiss`, and `cook` events to `POST /feedback`.
+The ML service stores those events in MongoDB and refreshes the Logistic Regression ranker in the background.
+Manual training is also available through `POST /train` and `POST /train/ranker`.
+
+### 4. OCR Food/Non-Food Classifier
+
+File: `app/models/edibility_classifier.py`
+
+This classifier uses character n-gram TF-IDF plus Logistic Regression to filter noisy OCR output.
+The backend calls `POST /receipts/filter` before receipt items are added to the inventory.
+
+### 5. Waste Rule Mining
 
 File: `app/models/elcs_classifier.py`
 
@@ -346,6 +369,12 @@ $env:MONGO_URI="mongodb://localhost:27017"
 $env:MONGO_DB="foodmood"
 ```
 
+When running beside the existing backend `.env`, you can point ML at the same database:
+
+```powershell
+$env:MONGODB_URI=(Select-String -Path ..\foodmood-backend\api\.env -Pattern '^MONGODB_URI=').Line.Split('=',2)[1]
+```
+
 Run the service:
 
 ```powershell
@@ -369,6 +398,7 @@ Defined in `app/config.py`.
 | `PORT` | `4200` | Runtime port |
 | `LOG_LEVEL` | `INFO` | Logging level |
 | `MONGO_URI` | `mongodb://mongo:27017` | MongoDB server URI |
+| `MONGODB_URI` | unset | Optional alias matching the Node backend `.env`; takes precedence over `MONGO_URI` |
 | `MONGO_DB` | `foodmood` | Database name |
 | `FOODITEMS_COLLECTION` | `fooditems` | FoodItem collection |
 | `RECIPES_COLLECTION` | `recipes` | Recipe collection |

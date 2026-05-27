@@ -128,3 +128,31 @@ async def user_recipe_interactions(user_id: str) -> dict[str, float]:
         if w > out.get(rid, -1.0):
             out[rid] = w
     return out
+
+
+async def user_recipe_affinity(user_id: str) -> dict[str, float]:
+    """Latest signed user affinity per recipe.
+
+    dismiss = negative, view = weak positive, like/cook = strong positive.
+    """
+    db = get_db()
+    cursor = (
+        db[feedback_collection_name()]
+        .find({"user_id": str(user_id)})
+        .sort("createdAt", 1)
+    )
+    out: dict[str, float] = {}
+    async for doc in cursor:
+        rid = str(doc.get("recipe_id", ""))
+        if not rid:
+            continue
+        action = str(doc.get("action", ""))
+        if action == "dismiss":
+            out[rid] = -1.0
+        elif action == "view":
+            out[rid] = max(out.get(rid, 0.0), 0.15)
+        elif action == "like":
+            out[rid] = 0.9
+        elif action == "cook":
+            out[rid] = 1.0
+    return out

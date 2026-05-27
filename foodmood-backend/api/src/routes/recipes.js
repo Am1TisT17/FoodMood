@@ -4,7 +4,7 @@ import Recipe from '../models/Recipe.js';
 import FoodItem from '../models/FoodItem.js';
 import { authRequired } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { recommendForUser, rankRecipes } from '../services/recommender.js';
+import { recommendForUser } from '../services/recommender.js';
 import { recommendFromML, isMlConfigured, sendMlFeedback, triggerMlTrain } from '../services/mlClient.js';
 import {
   findRecipesByIngredients,
@@ -19,6 +19,7 @@ import {
   setRecipePreference,
   clearRecipePreference,
   toMlFeedbackAction,
+  filterDislikedRecipes,
 } from '../services/recipePreferences.js';
 
 const router = Router();
@@ -58,6 +59,8 @@ async function handleRecipeFeedback(userId, recipeId, body) {
         ? body.personalRank <= 1
           ? body.personalRank
           : body.personalRank / 100
+        : typeof body.matchPercentage === 'number'
+          ? body.matchPercentage / 100
         : undefined);
     sendMlFeedback({
       userId: userId.toString(),
@@ -135,33 +138,54 @@ router.get('/:id', async (req, res) => {
 //   1. ML microservice — personalized when userId is supplied (returns meta + personalRank)
 //   2. Spoonacular external API
 //   3. Local rule-based ranker (always available)
-async function getRecommendations(pantry, limit, userId) {
+function candidateLimitForFirstPage(limit, preferences = {}) {
+  const dislikedCount = Object.values(preferences).filter((p) => p === 'disliked').length;
+  return Math.min(50, Math.max(limit, limit + dislikedCount + 8));
+}
+
+function hideDislikedFirstPage(recipes, limit, preferences = {}) {
+  return filterDislikedRecipes(recipes, preferences).slice(0, limit);
+}
+
+async function getRecommendations(pantry, limit, userId, preferences = {}) {
+  const candidateLimit = candidateLimitForFirstPage(limit, preferences);
+
   if (isMlConfigured()) {
-    const ml = await recommendFromML(pantry, { limit, userId });
+    const ml = await recommendFromML(pantry, { limit: candidateLimit, userId });
     if (ml && ml.recipes && ml.recipes.length > 0) {
-      return {
-        recipes: ml.recipes,
-        source: 'ml',
-        meta: ml.meta,
-        modelVersion: ml.modelVersion,
-      };
+      const recipes = hideDislikedFirstPage(ml.recipes, limit, preferences);
+      if (recipes.length > 0) {
+        return {
+          recipes,
+          source: 'ml',
+          meta: ml.meta,
+          modelVersion: ml.modelVersion,
+        };
+      }
     }
   }
   if (isSpoonacularConfigured()) {
-    const sp = await findRecipesByIngredients(pantry, { limit });
-    if (sp && sp.length > 0) return { recipes: sp, source: 'spoonacular', meta: null };
+    const sp = await findRecipesByIngredients(pantry, { limit: Math.min(candidateLimit, 25) });
+    if (sp && sp.length > 0) {
+      const recipes = hideDislikedFirstPage(sp, limit, preferences);
+      if (recipes.length > 0) {
+        return {
+          recipes,
+          source: 'spoonacular',
+          meta: null,
+        };
+      }
+    }
   }
-  const local = await recommendForUser(pantry, { limit });
-  return { recipes: local, source: 'rule-based', meta: null };
+  const local = await recommendForUser(pantry, { limit: candidateLimit });
+  return { recipes: hideDislikedFirstPage(local, limit, preferences), source: 'rule-based', meta: null };
 }
 
 router.get('/recommend/me', authRequired, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit || '12', 10), 25);
   const pantry = await FoodItem.find({ user: req.userId, status: 'active' }).lean();
-  const [result, preferences] = await Promise.all([
-    getRecommendations(pantry, limit, req.userId),
-    getPreferencesMap(req.userId),
-  ]);
+  const preferences = await getPreferencesMap(req.userId);
+  const result = await getRecommendations(pantry, limit, req.userId, preferences);
   res.json({
     recipes: attachPreferencesToRecipes(result.recipes, preferences),
     source: result.source,
@@ -197,7 +221,8 @@ router.post(
         ? req.body.pantry
         : await FoodItem.find({ user: req.userId, status: 'active' }).lean();
     const limit = req.body.limit || 12;
-    const result = await getRecommendations(pantry, limit, req.userId);
+    const preferences = await getPreferencesMap(req.userId);
+    const result = await getRecommendations(pantry, limit, req.userId, preferences);
     res.json({
       recipes: result.recipes,
       source: result.source,

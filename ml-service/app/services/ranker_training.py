@@ -17,9 +17,13 @@ log = logging.getLogger(__name__)
 
 
 def _label_from_action(action: str) -> int | None:
-    """Binary label for training. Passive views are excluded (return None)."""
+    """Binary label for training.
+
+    Views are weak positive signals through ACTION_WEIGHT, while like/cook are
+    strong positives and dismiss is a strong negative.
+    """
     if action == "view":
-        return None
+        return 1
     if action == "dismiss":
         return 0
     if action in ("cook", "like"):

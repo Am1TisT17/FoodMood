@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import logging
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from pydantic import BaseModel, Field
 
 from ..auth import verify_internal_key
@@ -12,6 +13,7 @@ from ..services.ranker_training import train_personal_ranker
 
 
 router = APIRouter(tags=["feedback"])
+log = logging.getLogger(__name__)
 
 
 class FeedbackEvent(BaseModel):
@@ -28,12 +30,26 @@ class FeedbackResponse(BaseModel):
     action: str
 
 
+async def _refresh_ranker_background(request: Request) -> None:
+    try:
+        result = await train_personal_ranker()
+        request.app.state.ranker_status = result
+        log.info("Ranker background refresh finished after feedback: %s", result)
+    except Exception as exc:
+        request.app.state.ranker_status = {"status": "failed", "error": str(exc)}
+        log.exception("Ranker background refresh failed")
+
+
 @router.post(
     "/feedback",
     response_model=FeedbackResponse,
     dependencies=[Depends(verify_internal_key)],
 )
-async def post_feedback(event: FeedbackEvent):
+async def post_feedback(
+    event: FeedbackEvent,
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
     await log_feedback(
         user_id=event.userId,
         recipe_id=event.recipeId,
@@ -42,6 +58,7 @@ async def post_feedback(event: FeedbackEvent):
         score_shown=event.scoreShown,
         days_to_expiry=event.daysToExpiry,
     )
+    background_tasks.add_task(_refresh_ranker_background, request)
     return FeedbackResponse(accepted=True, action=event.action)
 
 

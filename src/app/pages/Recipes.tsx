@@ -59,13 +59,6 @@ export function Recipes() {
   };
 
   const handleCloseModal = () => {
-    if (
-      selectedRecipe &&
-      selectedRecipe.userPreference !== 'liked' &&
-      selectedRecipe.userPreference !== 'disliked'
-    ) {
-      setRecipePreference(selectedRecipe.id, 'disliked').catch(() => {});
-    }
     setSelectedRecipe(null);
   };
 
@@ -89,7 +82,9 @@ export function Recipes() {
     try {
       await setRecipePreference(recipe.id, next);
       toast.message(next === 'disliked' ? 'We will show fewer recipes like this' : 'Preference cleared');
-      if (selectedRecipe?.id === recipe.id) {
+      if (selectedRecipe?.id === recipe.id && next === 'disliked') {
+        setSelectedRecipe(null);
+      } else if (selectedRecipe?.id === recipe.id) {
         setSelectedRecipe({ ...recipe, userPreference: next ?? undefined });
       }
     } catch {

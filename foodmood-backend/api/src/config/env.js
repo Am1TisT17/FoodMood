@@ -44,7 +44,8 @@ export const env = {
   ML_TIMEOUT_MS: parseInt(process.env.ML_TIMEOUT_MS || '5000', 10),
   // Shared secret for ML's protected endpoints (/feedback, /train,
   // /notifications/recipe-suggestions). Must match ML's INTERNAL_API_KEY.
-  ML_INTERNAL_API_KEY: process.env.ML_INTERNAL_API_KEY || 'change-me',
+  ML_INTERNAL_API_KEY:
+    process.env.ML_INTERNAL_API_KEY || process.env.ML_INTERNAL_KEY || 'change-me',
 
   // Spoonacular external recipe API (free tier, optional).
   SPOONACULAR_API_KEY: process.env.SPOONACULAR_API_KEY || '',

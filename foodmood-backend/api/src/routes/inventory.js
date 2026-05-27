@@ -4,6 +4,7 @@ import FoodItem from '../models/FoodItem.js';
 import { authRequired } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { computeStatsDelta, applyDelta } from '../services/statsCalculator.js';
+import { confirmReceiptWithML } from '../services/mlClient.js';
 
 const router = Router();
 router.use(authRequired);
@@ -73,6 +74,11 @@ router.post(
       user: req.userId,
     }));
     const created = await FoodItem.insertMany(docs);
+    confirmReceiptWithML({
+      userId: req.userId.toString(),
+      parsedItems: req.body.items,
+      confirmedItems: req.body.items,
+    });
     res.status(201).json({ items: created.map((i) => i.toDTO()) });
   }
 );

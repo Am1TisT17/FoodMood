@@ -232,13 +232,16 @@ export function FoodMoodProvider({ children }: { children: ReactNode }) {
       personalRank: recipe?.personalRank,
       matchPercentage: recipe?.matchPercentage,
     });
-    setRecipes((prev) =>
-      prev.map((r) =>
+    setRecipes((prev) => {
+      if (preference === 'disliked') {
+        return prev.filter((r) => r.id !== recipeId);
+      }
+      return prev.map((r) =>
         r.id === recipeId
           ? { ...r, userPreference: preference ?? undefined }
           : r
-      )
-    );
+      );
+    });
   };
 
   return (

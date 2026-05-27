@@ -58,3 +58,10 @@ export function attachPreferencesToRecipes(recipes, preferencesMap) {
     return pref ? { ...r, userPreference: pref } : r;
   });
 }
+
+export function filterDislikedRecipes(recipes, preferencesMap) {
+  return recipes.filter((r) => {
+    const id = r.id || r._id?.toString?.();
+    return !id || preferencesMap[id] !== 'disliked';
+  });
+}

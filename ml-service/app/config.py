@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     mongo_uri: str = "mongodb://mongo:27017"
+    mongodb_uri: str | None = None
     mongo_db: str = "foodmood"
     fooditems_collection: str = "fooditems"
     recipes_collection: str = "recipes"

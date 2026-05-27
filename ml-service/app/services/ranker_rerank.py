@@ -5,7 +5,12 @@ from typing import Any
 
 from ..models.personal_ranker import RankInput, ranker
 from ..models.recipe_matcher import MatchResult
-from .feedback_store import recipe_popularity, user_action_counts, user_recipe_interactions
+from .feedback_store import (
+    recipe_popularity,
+    user_action_counts,
+    user_recipe_affinity,
+    user_recipe_preferences,
+)
 
 
 async def personal_rerank_match_results(
@@ -28,11 +33,14 @@ async def personal_rerank_match_results(
 
     popularity = await recipe_popularity()
     counts = await user_action_counts(user_id)
-    history = await user_recipe_interactions(user_id)
+    history = await user_recipe_affinity(user_id)
+    preferences = await user_recipe_preferences(user_id)
 
     inputs: list[RankInput] = []
+    recipe_ids: list[str] = []
     for c in candidates:
         recipe_id = str(c.recipe.get("_id"))
+        recipe_ids.append(recipe_id)
         inputs.append(
             RankInput(
                 cosine=c.cosine,
@@ -46,11 +54,29 @@ async def personal_rerank_match_results(
         )
 
     scores = ranker.score(inputs)
-    paired = sorted(zip(scores, candidates), key=lambda p: -p[0])
+    adjusted_scores: list[float] = []
+    for recipe_id, score in zip(recipe_ids, scores):
+        pref = preferences.get(recipe_id)
+        if pref == "disliked":
+            adjusted_scores.append(min(float(score) * 0.05, 0.01))
+        elif pref == "liked":
+            adjusted_scores.append(min(float(score) + 0.15, 1.0))
+        else:
+            adjusted_scores.append(float(score))
+
+    paired = sorted(zip(adjusted_scores, candidates), key=lambda p: -p[0])
+    non_disliked = [
+        (s, c)
+        for s, c in paired
+        if preferences.get(str(c.recipe.get("_id"))) != "disliked"
+    ]
+    if len(non_disliked) >= take:
+        paired = non_disliked
     top = [c for _, c in paired[:take]]
     top_scores = [float(s) for s, _ in paired[:take]]
 
     return top, top_scores, {
         "reranked": True,
         "ranker_fitted": ranker.fitted,
+        "disliked_demoted": len(candidates) - len(non_disliked),
     }
