@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { Sidebar } from "../components/Sidebar";
 import { BottomNav } from "../components/BottomNav";
@@ -9,14 +9,16 @@ import { Badge } from "../components/ui/badge";
 import { MapPin, Navigation, User, MessageCircle } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
+import { useLanguage } from "../context/LanguageContext";
 
 export function Community() {
   const { communityListings } = useFoodMood();
+  const { t } = useLanguage();
   const [selectedListing, setSelectedListing] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleRequestItem = (itemName: string) => {
-    toast.success(`Request sent for ${itemName}!`);
+    toast.success(`${t("pages.community.requestSent", "Request sent for")} ${itemName}!`);
   };
 
   return (
@@ -30,9 +32,9 @@ export function Community() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <h1 className="text-3xl font-bold text-[#4A5568] mb-2">Community Marketplace</h1>
+            <h1 className="text-3xl font-bold text-[#4A5568] mb-2">{t("pages.community.title")}</h1>
             <p className="text-[#4A5568]/60 mb-6">
-              Share surplus food and discover what's available nearby
+              {t("pages.community.subtitle")}
             </p>
           </motion.div>
 
@@ -61,7 +63,7 @@ export function Community() {
                     <Card className="p-3 bg-white/95 backdrop-blur-sm">
                       <div className="flex items-center gap-2 text-sm text-[#4A5568]">
                         <MapPin className="w-4 h-4 text-[#B2D2A4]" />
-                        <span className="font-medium">{communityListings.length} items available nearby</span>
+                        <span className="font-medium">{communityListings.length} {t("pages.community.itemsNearby", "items available nearby")}</span>
                       </div>
                     </Card>
                   </div>
@@ -69,7 +71,7 @@ export function Community() {
                   <div className="absolute bottom-4 right-4">
                     <Button className="bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568] shadow-lg">
                       <Navigation className="w-4 h-4 mr-2" />
-                      My Location
+                      {t("pages.community.myLocation", "My Location")}
                     </Button>
                   </div>
                 </div>
@@ -137,14 +139,14 @@ export function Community() {
                               }}
                               className="flex-1 bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568]"
                             >
-                              Request Item
+                              {t("pages.community.requestItem", "Request Item")}
                             </Button>
                             <Button 
                               size="sm"
                               variant="outline"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toast.info("Message feature coming soon!");
+                                toast.info(t("pages.community.messageComingSoon", "Message feature coming soon!"));
                               }}
                             >
                               <MessageCircle className="w-4 h-4" />
@@ -172,17 +174,17 @@ export function Community() {
                   <User className="w-8 h-8 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-[#4A5568] mb-3">
-                  Share Your Surplus Food
+                  {t("pages.community.shareSurplus", "Share Your Surplus Food")}
                 </h2>
                 <p className="text-[#4A5568]/60 mb-6">
-                  Have food items you won't use? Share them with your community and help reduce waste while helping neighbors.
+                  {t("pages.community.shareText", "Have food items you won't use? Share them with your community and help reduce waste while helping neighbors.")}
                 </p>
                 <Button 
                   size="lg"
                   className="bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568]"
                   onClick={() => navigate('/share-food')}
                 >
-                  Share from Pantry
+                  {t("pages.community.shareFromPantry", "Share from Pantry")}
                 </Button>
               </div>
             </Card>
@@ -197,15 +199,15 @@ export function Community() {
           >
             <Card className="p-6 text-center">
               <p className="text-3xl font-bold text-[#B2D2A4] mb-2">247</p>
-              <p className="text-sm text-[#4A5568]/60">Items Shared This Week</p>
+              <p className="text-sm text-[#4A5568]/60">{t("pages.community.itemsSharedWeek", "Items Shared This Week")}</p>
             </Card>
             <Card className="p-6 text-center">
               <p className="text-3xl font-bold text-[#B2D2A4] mb-2">1,432</p>
-              <p className="text-sm text-[#4A5568]/60">Active Community Members</p>
+              <p className="text-sm text-[#4A5568]/60">{t("pages.community.activeMembers", "Active Community Members")}</p>
             </Card>
             <Card className="p-6 text-center">
               <p className="text-3xl font-bold text-[#B2D2A4] mb-2">3.2 km</p>
-              <p className="text-sm text-[#4A5568]/60">Average Sharing Distance</p>
+              <p className="text-sm text-[#4A5568]/60">{t("pages.community.averageDistance", "Average Sharing Distance")}</p>
             </Card>
           </motion.div>
         </div>

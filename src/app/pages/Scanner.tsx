@@ -11,6 +11,7 @@ import { Badge } from "../components/ui/badge";
 import { Camera, Upload, CheckCircle2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
+import { useLanguage } from "../context/LanguageContext";
 
 // Tenge-aware scanned item shape. The OCR service converts every price to
 // integer KZT and (optionally) attaches the original value/currency so we can
@@ -39,6 +40,7 @@ const CURRENCY_SYMBOL: Record<string, string> = {
 export function Scanner() {
   const navigate = useNavigate();
   const { refresh } = useFoodMood();
+  const { t } = useLanguage();
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [items, setItems] = useState<ScannedItem[]>([]);
@@ -58,7 +60,7 @@ export function Scanner() {
         ? parsed
         : [];
       if (arr.length === 0) {
-        toast.error(parsed?.error || "Couldn't read any food items from the receipt. Try a clearer photo.");
+        toast.error(parsed?.error || t("pages.scanner.couldNotRead", "Couldn't read any food items from the receipt. Try a clearer photo."));
         setScanning(false);
         return;
       }
@@ -66,12 +68,12 @@ export function Scanner() {
       setScanned(true);
       const filteredOut = Number(parsed.filteredOutCount) || 0;
       if (filteredOut > 0) {
-        toast.success(`Receipt scanned. AI filtered out ${filteredOut} non-food item(s) automatically.`);
+        toast.success(t("pages.scanner.receiptScannedFiltered", "Receipt scanned. AI filtered out {count} non-food item(s) automatically.").replace("{count}", String(filteredOut)));
       } else {
-        toast.success(`Receipt scanned — found ${parsed.items?.length || 0} items`);
+        toast.success(t("pages.scanner.receiptScannedFound", "Receipt scanned — found {count} items").replace("{count}", String(parsed.items?.length || 0)));
       }
     } catch (err: any) {
-      toast.error(err?.message || "Scan failed");
+      toast.error(err?.message || t("pages.scanner.scanFailed", "Scan failed"));
     } finally {
       setScanning(false);
     }
@@ -140,7 +142,7 @@ export function Scanner() {
     // Drop empty rows the user may have added but not filled in.
     const validItems = items.filter((it) => it.name.trim().length > 0);
     if (validItems.length === 0) {
-      toast.error("Add at least one item with a name before saving.");
+      toast.error(t("pages.scanner.addNameBeforeSaving", "Add at least one item with a name before saving."));
       return;
     }
     setSaving(true);
@@ -157,10 +159,10 @@ export function Scanner() {
         })) as any
       );
       await refresh();
-      toast.success(`${items.length} items added to pantry!`);
+      toast.success(`${items.length} ${t("pages.scanner.itemsAdded", "items added to pantry!")}`);
       navigate("/pantry");
     } catch (err: any) {
-      toast.error(err?.message || "Failed to save items");
+      toast.error(err?.message || t("pages.scanner.saveFailed", "Failed to save items"));
     } finally {
       setSaving(false);
     }
@@ -194,8 +196,8 @@ export function Scanner() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <h1 className="text-3xl font-bold text-[#4A5568] mb-2">Smart Scanner</h1>
-            <p className="text-[#4A5568]/60 mb-6">Scan your receipt to automatically add items</p>
+            <h1 className="text-3xl font-bold text-[#4A5568] mb-2">{t("pages.scanner.title")}</h1>
+            <p className="text-[#4A5568]/60 mb-6">{t("pages.scanner.subtitle")}</p>
           </motion.div>
 
           {!scanned ? (
@@ -222,13 +224,13 @@ export function Scanner() {
                     </div>
 
                     <h2 className="text-2xl font-semibold text-[#4A5568] mb-4">
-                      {scanning ? "Scanning Receipt..." : "Upload Receipt"}
+                      {scanning ? t("pages.scanner.scanningReceipt", "Scanning Receipt...") : t("pages.scanner.uploadReceipt", "Upload Receipt")}
                     </h2>
 
                     <p className="text-[#4A5568]/60 mb-6">
                       {scanning
-                        ? "Our AI is analyzing your receipt..."
-                        : "Take a photo or upload an image of your grocery receipt"}
+                        ? t("pages.scanner.analyzing", "Our AI is analyzing your receipt...")
+                        : t("pages.scanner.uploadHint", "Take a photo or upload an image of your grocery receipt")}
                     </p>
 
                     {!scanning && (
@@ -239,7 +241,7 @@ export function Scanner() {
                           size="lg"
                         >
                           <Camera className="w-5 h-5 mr-2" />
-                          Take Photo
+                          {t("pages.scanner.takePhoto", "Take Photo")}
                         </Button>
                         <Button
                           onClick={onUploadClick}
@@ -247,7 +249,7 @@ export function Scanner() {
                           size="lg"
                         >
                           <Upload className="w-5 h-5 mr-2" />
-                          Upload Image
+                          {t("pages.scanner.uploadImage", "Upload Image")}
                         </Button>
                         <Button
                           onClick={handleStartManualEntry}
@@ -256,7 +258,7 @@ export function Scanner() {
                           className="text-[#4A5568]/70 hover:text-[#4A5568]"
                         >
                           <Plus className="w-5 h-5 mr-2" />
-                          Enter Items Manually
+                          {t("pages.scanner.enterManually", "Enter Items Manually")}
                         </Button>
                       </div>
                     )}
@@ -285,7 +287,7 @@ export function Scanner() {
               >
                 <Card className="p-8 h-full">
                   <h3 className="text-xl font-semibold text-[#4A5568] mb-4">
-                    How it works
+                    {t("pages.scanner.howItWorks", "How it works")}
                   </h3>
                   <div className="space-y-4">
                     <div className="flex gap-4">
@@ -293,9 +295,9 @@ export function Scanner() {
                         1
                       </div>
                       <div>
-                        <h4 className="font-medium text-[#4A5568] mb-1">Capture Receipt</h4>
+                        <h4 className="font-medium text-[#4A5568] mb-1">{t("pages.scanner.stepCaptureTitle", "Capture Receipt")}</h4>
                         <p className="text-sm text-[#4A5568]/60">
-                          Take a clear photo of your grocery receipt
+                          {t("pages.scanner.stepCaptureText", "Take a clear photo of your grocery receipt")}
                         </p>
                       </div>
                     </div>
@@ -305,9 +307,9 @@ export function Scanner() {
                         2
                       </div>
                       <div>
-                        <h4 className="font-medium text-[#4A5568] mb-1">AI Recognition</h4>
+                        <h4 className="font-medium text-[#4A5568] mb-1">{t("pages.scanner.stepAiTitle", "AI Recognition")}</h4>
                         <p className="text-sm text-[#4A5568]/60">
-                          Our smart OCR extracts item names, prices, and dates
+                          {t("pages.scanner.stepAiText", "Our smart OCR extracts item names, prices, and dates")}
                         </p>
                       </div>
                     </div>
@@ -317,9 +319,9 @@ export function Scanner() {
                         3
                       </div>
                       <div>
-                        <h4 className="font-medium text-[#4A5568] mb-1">Auto-converted to ₸</h4>
+                        <h4 className="font-medium text-[#4A5568] mb-1">{t("pages.scanner.stepConvertTitle", "Auto-converted to ₸")}</h4>
                         <p className="text-sm text-[#4A5568]/60">
-                          Prices in USD or RUB are converted to tenge automatically using live rates
+                          {t("pages.scanner.stepConvertText", "Prices in USD or RUB are converted to tenge automatically using live rates")}
                         </p>
                       </div>
                     </div>
@@ -329,9 +331,9 @@ export function Scanner() {
                         4
                       </div>
                       <div>
-                        <h4 className="font-medium text-[#4A5568] mb-1">Track Everything</h4>
+                        <h4 className="font-medium text-[#4A5568] mb-1">{t("pages.scanner.stepTrackTitle", "Track Everything")}</h4>
                         <p className="text-sm text-[#4A5568]/60">
-                          Items are automatically tracked with expiry reminders
+                          {t("pages.scanner.stepTrackText", "Items are automatically tracked with expiry reminders")}
                         </p>
                       </div>
                     </div>
@@ -347,7 +349,7 @@ export function Scanner() {
               <Card className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-semibold text-[#4A5568]">
-                    Verify Scanned Items
+                    {t("pages.scanner.verifyItems", "Verify Scanned Items")}
                   </h2>
                   <div className="flex items-center gap-2">
                     <Button
@@ -357,11 +359,11 @@ export function Scanner() {
                       className="border-[#B2D2A4] text-[#4A5568] hover:bg-[#B2D2A4]/10"
                     >
                       <Plus className="w-4 h-4 mr-1" />
-                      Add Item
+                      {t("pages.scanner.addItem", "Add Item")}
                     </Button>
                     <Badge className="bg-green-500 text-white">
                       <CheckCircle2 className="w-4 h-4 mr-1" />
-                      Scan Complete
+                      {t("pages.scanner.scanComplete", "Scan Complete")}
                     </Badge>
                   </div>
                 </div>
@@ -382,7 +384,7 @@ export function Scanner() {
                       >
                         <div className="flex items-center justify-between mb-3">
                           <span className="text-sm font-medium text-[#4A5568]">
-                            Item {index + 1}
+                            {t("pages.scanner.item", "Item")} {index + 1}
                           </span>
                           <div className="flex items-center gap-2">
                             <Badge
@@ -396,7 +398,7 @@ export function Scanner() {
                               {item.confidence < 85 && (
                                 <AlertCircle className="w-3 h-3 mr-1" />
                               )}
-                              {item.confidence}% confidence
+                              {item.confidence}% {t("pages.scanner.confidence", "confidence")}
                             </Badge>
                             <Button
                               onClick={() => handleRemoveItem(index)}
@@ -413,7 +415,7 @@ export function Scanner() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
                             <label className="text-xs text-[#4A5568]/60 mb-1 block">
-                              Item Name
+                              {t("pages.scanner.itemName", "Item Name")}
                             </label>
                             <Input
                               value={item.name}
@@ -427,7 +429,7 @@ export function Scanner() {
                           </div>
                           <div>
                             <label className="text-xs text-[#4A5568]/60 mb-1 block">
-                              Price (₸)
+                              {t("pages.scanner.priceKzt", "Price (₸)")}
                             </label>
                             <Input
                               type="number"
@@ -441,14 +443,14 @@ export function Scanner() {
                             />
                             {wasConverted && (
                               <p className="text-[10px] text-[#4A5568]/50 mt-1">
-                                was {symbol}
+                                {t("pages.scanner.was", "was")} {symbol}
                                 {item.originalPrice}
                               </p>
                             )}
                           </div>
                           <div>
                             <label className="text-xs text-[#4A5568]/60 mb-1 block">
-                              Expiry Date
+                              {t("pages.scanner.expiryDate", "Expiry Date")}
                             </label>
                             <Input
                               type="date"
@@ -471,14 +473,14 @@ export function Scanner() {
                     className="flex-1 bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568]"
                     size="lg"
                   >
-                    {saving ? "Saving..." : `Add ${items.length} Items to Pantry`}
+                    {saving ? t("pages.scanner.saving", "Saving...") : t("pages.scanner.addItemsButton", "Add {count} Items to Pantry").replace("{count}", String(items.length))}
                   </Button>
                   <Button
                     onClick={() => { setScanned(false); setItems([]); }}
                     variant="outline"
                     size="lg"
                   >
-                    Scan Again
+                    {t("pages.scanner.scanAgain", "Scan Again")}
                   </Button>
                 </div>
               </Card>

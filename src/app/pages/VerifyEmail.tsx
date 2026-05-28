@@ -3,11 +3,13 @@ import { Link, useSearchParams } from "react-router";
 import { motion } from "motion/react";
 import { CheckCircle2, XCircle, Loader2, Leaf } from "lucide-react";
 import { api } from "../../lib/api";
+import { useLanguage } from "../context/LanguageContext";
 
 // Landing page hit by the link inside the verification email.
 // Reads `?token=...` from the URL, calls GET /api/auth/verify-email/:token,
 // and shows a success / failure state. No user interaction required.
 export function VerifyEmail() {
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") || "";
 
@@ -17,7 +19,7 @@ export function VerifyEmail() {
   useEffect(() => {
     if (!token) {
       setStatus("error");
-      setMessage("Verification token is missing from the link.");
+      setMessage(t("pages.auth.verifyTokenMissing", "Verification token is missing from the link."));
       return;
     }
     let cancelled = false;
@@ -26,12 +28,12 @@ export function VerifyEmail() {
         await api.verifyEmail(token);
         if (!cancelled) {
           setStatus("success");
-          setMessage("Your email has been verified successfully.");
+          setMessage(t("pages.auth.emailVerifiedMessage", "Your email has been verified successfully."));
         }
       } catch (err: any) {
         if (!cancelled) {
           setStatus("error");
-          setMessage(err?.message || "The verification link is invalid or has expired.");
+          setMessage(err?.message || t("pages.auth.verifyFailedMessage", "The verification link is invalid or has expired."));
         }
       }
     })();
@@ -57,10 +59,10 @@ export function VerifyEmail() {
             <>
               <Loader2 className="w-8 h-8 text-[#7FB069] animate-spin mx-auto mb-4" />
               <h1 className="text-xl font-semibold text-[#2D3748] mb-2">
-                Verifying your email…
+                {t("pages.auth.verifyingEmail", "Verifying your email...")}
               </h1>
               <p className="text-sm text-[#4A5568]/70">
-                One moment, this should only take a second.
+                {t("pages.auth.oneMoment", "One moment, this should only take a second.")}
               </p>
             </>
           )}
@@ -70,13 +72,13 @@ export function VerifyEmail() {
               <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="w-7 h-7 text-green-500" />
               </div>
-              <h1 className="text-2xl font-bold text-[#2D3748] mb-2">Email verified</h1>
+              <h1 className="text-2xl font-bold text-[#2D3748] mb-2">{t("pages.auth.emailVerified", "Email verified")}</h1>
               <p className="text-sm text-[#4A5568]/70 mb-6">{message}</p>
               <Link
                 to="/dashboard"
                 className="inline-block px-5 py-2.5 rounded-xl bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#2D3748] font-semibold text-sm transition-colors"
               >
-                Go to dashboard
+                {t("pages.auth.goToDashboard", "Go to dashboard")}
               </Link>
             </>
           )}
@@ -87,14 +89,14 @@ export function VerifyEmail() {
                 <XCircle className="w-7 h-7 text-red-500" />
               </div>
               <h1 className="text-2xl font-bold text-[#2D3748] mb-2">
-                Verification failed
+                {t("pages.auth.verificationFailed", "Verification failed")}
               </h1>
               <p className="text-sm text-[#4A5568]/70 mb-6">{message}</p>
               <Link
                 to="/login"
                 className="inline-block text-sm font-medium text-[#7FB069] hover:text-[#5a8a4d]"
               >
-                Back to sign in →
+                {t("pages.auth.backToSignIn", "Back to sign in")} →
               </Link>
             </>
           )}

@@ -1,10 +1,11 @@
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { motion, useScroll, useTransform } from "motion/react";
 import {
   ArrowRight, Star, TrendingUp, Leaf, DollarSign,
   CheckCircle2, Scan, ChefHat, Users, Clock, Zap
 } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
 // Floating app preview card component
 function DashboardMockup() {
@@ -85,6 +86,7 @@ function DashboardMockup() {
 
 export function HeroSection() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [count, setCount] = useState({ users: 0, food: 0, co2: 0 });
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
@@ -147,7 +149,7 @@ export function HeroSection() {
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#B2D2A4]/15 border border-[#B2D2A4]/30 text-sm font-medium text-[#4A5568]">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#B2D2A4] animate-pulse" />
-              Trusted by {count.users.toLocaleString()}+ households worldwide
+              {t("hero.trustedBy", "Trusted by")} {count.users.toLocaleString()}+ {t("hero.householdsWorldwide", "households worldwide")}
             </span>
             <ArrowRight className="w-3.5 h-3.5" />
           </div>
@@ -162,14 +164,14 @@ export function HeroSection() {
             className="text-6xl md:text-7xl lg:text-8xl text-[#1a2332] leading-[1.05] tracking-tight mb-6"
             style={{ fontWeight: 800 }}
           >
-            Stop Wasting Food.{" "}
+            {t("hero.titleLine1", "Stop Wasting Food.")}{" "}
             <span className="relative inline-block">
-              <span className="relative z-10 text-[#B2D2A4]">Start Saving</span>
+              <span className="relative z-10 text-[#B2D2A4]">{t("hero.titleHighlight", "Start Saving")}</span>
               <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3 9C60 3 160 3 297 9" stroke="#B2D2A4" strokeWidth="5" strokeLinecap="round" />
               </svg>
             </span>{" "}
-            Money & Planet.
+            {t("hero.titleLine2", "Money & Planet.")}
           </motion.h1>
 
           <motion.p
@@ -178,9 +180,7 @@ export function HeroSection() {
             transition={{ duration: 0.7, delay: 0.35 }}
             className="text-xl md:text-2xl text-[#4A5568]/70 max-w-3xl mx-auto leading-relaxed"
           >
-            FoodMood uses AI-powered scanning, smart recipes, and community sharing
-            to help you reduce food waste, save money, and protect the environment —
-            all in one elegant platform.
+            {t("hero.subtitle", "FoodMood uses AI-powered scanning, smart recipes, and community sharing to help you reduce food waste, save money, and protect the environment - all in one elegant platform.")}
           </motion.p>
         </div>
 
@@ -195,14 +195,14 @@ export function HeroSection() {
             onClick={() => navigate("/login")}
             className="group flex items-center gap-2 px-8 py-4 bg-[#1a2332] hover:bg-[#2d3748] text-white rounded-2xl font-semibold text-lg shadow-xl shadow-[#1a2332]/25 hover:shadow-2xl transition-all duration-300 hover:-translate-y-0.5"
           >
-            Start for Free
+            {t("hero.startForFree", "Start for Free")}
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
           <button
             onClick={() => navigate("/dashboard")}
             className="flex items-center gap-2 px-8 py-4 bg-white hover:bg-gray-50 text-[#4A5568] rounded-2xl font-semibold text-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
           >
-            View Demo
+            {t("hero.viewDemo", "View Demo")}
           </button>
         </motion.div>
 
@@ -220,8 +220,8 @@ export function HeroSection() {
                 {
                   icon: TrendingUp,
                   value: `${count.food.toLocaleString()} kg`,
-                  label: "Food Saved by Community",
-                  sublabel: "This year alone",
+                  label: t("hero.foodSavedByCommunity", "Food Saved by Community"),
+                  sublabel: t("hero.thisYearAlone", "This year alone"),
                   color: "from-[#B2D2A4]/20 to-[#B2D2A4]/5",
                   iconColor: "text-[#B2D2A4]",
                   iconBg: "bg-[#B2D2A4]/20",
@@ -229,8 +229,8 @@ export function HeroSection() {
                 {
                   icon: Leaf,
                   value: `${count.co2.toLocaleString()} kg`,
-                  label: "CO₂ Emissions Offset",
-                  sublabel: "Equivalent to planting 450 trees",
+                  label: t("hero.co2EmissionsOffset", "CO2 Emissions Offset"),
+                  sublabel: t("hero.equivalentToPlanting450Trees", "Equivalent to planting 450 trees"),
                   color: "from-green-50 to-green-50/50",
                   iconColor: "text-green-500",
                   iconBg: "bg-green-100",
@@ -238,8 +238,8 @@ export function HeroSection() {
                 {
                   icon: DollarSign,
                   value: "$34,280",
-                  label: "Community Money Saved",
-                  sublabel: "Average $342 per household",
+                  label: t("hero.communityMoneySaved", "Community Money Saved"),
+                  sublabel: t("hero.average342PerHousehold", "Average $342 per household"),
                   color: "from-slate-50 to-slate-50/50",
                   iconColor: "text-[#4A5568]",
                   iconBg: "bg-slate-100",
@@ -288,7 +288,7 @@ export function HeroSection() {
                     ))}
                     <span className="text-sm font-semibold text-[#1a2332] ml-1">4.9</span>
                   </div>
-                  <p className="text-xs text-[#4A5568]/60">from 3,200+ reviews</p>
+                  <p className="text-xs text-[#4A5568]/60">{t("hero.fromReviews", "from 3,200+ reviews")}</p>
                 </div>
               </motion.div>
             </div>
@@ -323,8 +323,8 @@ export function HeroSection() {
                 <Scan className="w-5 h-5 text-[#B2D2A4]" />
               </div>
               <div>
-                <div className="text-xs font-bold text-[#1a2332]">Receipt Scanned</div>
-                <div className="text-xs text-[#4A5568]/50">12 items added</div>
+                <div className="text-xs font-bold text-[#1a2332]">{t("hero.receiptScanned", "Receipt Scanned")}</div>
+                <div className="text-xs text-[#4A5568]/50">{t("hero.itemsAdded", "12 items added")}</div>
               </div>
             </motion.div>
 
@@ -339,7 +339,7 @@ export function HeroSection() {
               </div>
               <div>
                 <div className="text-xs font-bold text-[#1a2332]">$28 Saved</div>
-                <div className="text-xs text-[#4A5568]/50">This week 🎉</div>
+                <div className="text-xs text-[#4A5568]/50">{t("hero.thisWeek", "This week")} 🎉</div>
               </div>
             </motion.div>
 
@@ -353,8 +353,8 @@ export function HeroSection() {
                 <Users className="w-5 h-5 text-[#B2D2A4]" />
               </div>
               <div>
-                <div className="text-xs font-bold text-white">5 items shared</div>
-                <div className="text-xs text-white/50">Near you</div>
+                <div className="text-xs font-bold text-white">{t("hero.itemsShared", "5 items shared")}</div>
+                <div className="text-xs text-white/50">{t("hero.nearYou", "Near you")}</div>
               </div>
             </motion.div>
           </motion.div>
@@ -368,7 +368,7 @@ export function HeroSection() {
         transition={{ delay: 1.5 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
       >
-        <span className="text-xs text-[#4A5568]/40 font-medium tracking-widest uppercase">Scroll to explore</span>
+        <span className="text-xs text-[#4A5568]/40 font-medium tracking-widest uppercase">{t("hero.scrollToExplore", "Scroll to explore")}</span>
         <motion.div
           animate={{ y: [0, 8, 0] }}
           transition={{ duration: 1.5, repeat: Infinity }}

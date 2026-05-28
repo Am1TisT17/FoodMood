@@ -1,17 +1,18 @@
 import { NavLink } from "react-router";
 import { Home, Package, Scan, ChefHat, Users, User } from "lucide-react";
 import { cn } from "./ui/utils";
-
-const navItems = [
-  { path: "/dashboard", icon: Home, label: "Home" },
-  { path: "/pantry", icon: Package, label: "Pantry" },
-  { path: "/scanner", icon: Scan, label: "Scan" },
-  { path: "/recipes", icon: ChefHat, label: "Recipes" },
-  { path: "/community", icon: Users, label: "Share" },
-  { path: "/profile", icon: User, label: "Profile" },
-];
+import { useLanguage } from "../context/LanguageContext";
 
 export function BottomNav() {
+  const { t } = useLanguage();
+  const navItems = [
+    { path: "/dashboard", icon: Home, label: t("nav.home") },
+    { path: "/pantry", icon: Package, label: t("nav.pantry") },
+    { path: "/scanner", icon: Scan, label: t("nav.scanner") },
+    { path: "/recipes", icon: ChefHat, label: t("nav.recipes") },
+    { path: "/community", icon: Users, label: t("nav.share") },
+    { path: "/profile", icon: User, label: t("nav.profile") },
+  ];
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#1a2332]/98 backdrop-blur-xl border-t border-white/8 z-50 shadow-2xl">
       <div className="flex items-center justify-around px-2 py-2 safe-area-pb">

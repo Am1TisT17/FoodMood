@@ -18,6 +18,7 @@ import {
   X,
   Star,
 } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
 
 interface Notification {
   id: string;
@@ -57,17 +58,17 @@ const decorateTitle = (rawType: string, title: string) => {
   return title;
 };
 
-const actionFor = (type: Notification["type"]) => {
+const actionFor = (type: Notification["type"], t: (key: string, fallback?: string) => string) => {
   switch (type) {
     case "expiry":
     case "ml-recipe":
-      return { label: "Find Recipes", path: "/recipes" };
+      return { label: t("pages.notifications.findRecipes", "Find Recipes"), path: "/recipes" };
     case "recipe":
-      return { label: "View Recipe", path: "/recipes" };
+      return { label: t("pages.notifications.viewRecipe", "View Recipe"), path: "/recipes" };
     case "community":
-      return { label: "View Listing", path: "/community" };
+      return { label: t("pages.notifications.viewListing", "View Listing"), path: "/community" };
     case "achievement":
-      return { label: "View Profile", path: "/profile" };
+      return { label: t("pages.notifications.viewProfile", "View Profile"), path: "/profile" };
     default:
       return undefined;
   }
@@ -99,6 +100,7 @@ const typeColors: Record<Notification["type"], string> = {
 
 export function Notifications() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [loading, setLoading] = useState(true);
@@ -109,13 +111,13 @@ export function Notifications() {
       const { notifications: list } = await api.notifications();
       const mapped: Notification[] = list.map((n: NotificationDTO) => {
         const uiType = mapType(n.type);
-        const action = actionFor(uiType);
+        const action = actionFor(uiType, t);
         return {
           id: n.id,
           type: uiType,
           title: decorateTitle(n.type, n.title),
           message: n.body,
-          time: timeAgo(n.createdAt || new Date().toISOString()),
+          time: timeAgo(n.createdAt || new Date().toISOString(), t),
           read: !!n.read,
           actionLabel: action?.label,
           actionPath: action?.path,
@@ -158,7 +160,7 @@ export function Notifications() {
   const markAllRead = async () => {
     const toMark = notifications.filter((n) => !n.read);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    toast.success("All notifications marked as read");
+    toast.success(t("pages.notifications.allReadToast", "All notifications marked as read"));
     await Promise.all(
       toMark
         .filter((n) => !isEphemeral(n.id))
@@ -172,7 +174,7 @@ export function Notifications() {
 
   const clearAll = () => {
     setNotifications([]);
-    toast.success("All notifications cleared");
+    toast.success(t("pages.notifications.clearedToast", "All notifications cleared"));
   };
 
   const filtered = notifications.filter((n) => filter === "all" || !n.read);
@@ -186,22 +188,22 @@ export function Notifications() {
           {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-3xl font-bold tracking-tight text-[#2D3748]">Notifications</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-[#2D3748]">{t("pages.notifications.title")}</h2>
           {unreadCount > 0 && (
             <Badge className="bg-[#B2D2A4] text-[#2D3748] hover:bg-[#B2D2A4]">
-              {unreadCount} new
+              {unreadCount} {t("pages.notifications.new", "new")}
             </Badge>
           )}
         </div>
         <div className="flex gap-2">
           {unreadCount > 0 && (
             <Button variant="outline" size="sm" onClick={markAllRead}>
-              Mark all read
+              {t("pages.notifications.markAllRead", "Mark all read")}
             </Button>
           )}
           {notifications.length > 0 && (
             <Button variant="outline" size="sm" onClick={clearAll}>
-              Clear all
+              {t("pages.notifications.clearAll", "Clear all")}
             </Button>
           )}
         </div>
@@ -215,7 +217,7 @@ export function Notifications() {
           onClick={() => setFilter("all")}
           className={filter === "all" ? "bg-[#2D3748]" : ""}
         >
-          All
+          {t("pages.notifications.all")}
         </Button>
         <Button
           variant={filter === "unread" ? "default" : "outline"}
@@ -223,7 +225,7 @@ export function Notifications() {
           onClick={() => setFilter("unread")}
           className={filter === "unread" ? "bg-[#2D3748]" : ""}
         >
-          Unread ({unreadCount})
+          {t("pages.notifications.unread")} ({unreadCount})
         </Button>
       </div>
 
@@ -232,18 +234,18 @@ export function Notifications() {
         {loading ? (
           <div className="text-center py-12 text-[#718096]">
             <div className="animate-spin w-6 h-6 border-2 border-[#B2D2A4] border-t-transparent rounded-full mx-auto mb-3" />
-            Loading notifications...
+            {t("pages.notifications.loading", "Loading notifications...")}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12">
             <Bell className="w-12 h-12 text-[#E2E8F0] mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-[#2D3748] mb-1">
-              {filter === "unread" ? "No unread notifications" : "No notifications yet"}
+              {filter === "unread" ? t("pages.notifications.noUnread", "No unread notifications") : t("pages.notifications.noNotifications", "No notifications yet")}
             </h3>
             <p className="text-sm text-[#718096]">
               {filter === "unread"
-                ? "You're all caught up!"
-                : "Add items to your pantry — alerts about expiring food will appear here automatically"}
+                ? t("pages.notifications.caughtUp", "You're all caught up!")
+                : t("pages.notifications.addItemsHint", "Add items to your pantry — alerts about expiring food will appear here automatically")}
             </p>
           </div>
         ) : (
@@ -301,13 +303,13 @@ export function Notifications() {
                       <div className="mt-3 space-y-2">
                         <p className="text-xs font-semibold text-[#2D3748] flex items-center gap-1">
                           <Sparkles className="w-3 h-3 text-emerald-500" />
-                          Suggested recipes for{" "}
-                          {notification.canonicalName || "your item"}
+                          {t("pages.notifications.suggestedFor", "Suggested recipes for")}{" "}
+                          {notification.canonicalName || t("pages.notifications.yourItem", "your item")}
                           {notification.daysToExpiry !== undefined && (
                             <Badge variant="outline" className="text-amber-600 border-amber-200 text-[10px] ml-1">
                               {notification.daysToExpiry === 0
-                                ? "expires today"
-                                : `${notification.daysToExpiry}d left`}
+                                ? t("pages.notifications.expiresToday", "expires today")
+                                : `${notification.daysToExpiry}${t("pages.notifications.daysLeft", "d left")}`}
                             </Badge>
                           )}
                         </p>
@@ -376,7 +378,7 @@ export function Notifications() {
             onClick={() => navigate("/profile")}
           >
             <Settings className="w-4 h-4 mr-2" />
-            Notification settings
+            {t("pages.notifications.settings", "Notification settings")}
           </Button>
         </div>
       )}
@@ -386,13 +388,13 @@ export function Notifications() {
   );
 }
 
-function timeAgo(dateStr: string) {
+function timeAgo(dateStr: string, t: (key: string, fallback?: string) => string) {
   const date = new Date(dateStr);
   const now = new Date();
   const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diff < 60) return "Just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return t("pages.notifications.justNow", "Just now");
+  if (diff < 3600) return `${Math.floor(diff / 60)} ${t("pages.notifications.minutesAgo", "m ago")}`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} ${t("pages.notifications.hoursAgo", "h ago")}`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)} ${t("pages.notifications.daysAgo", "d ago")}`;
   return date.toLocaleDateString();
 }

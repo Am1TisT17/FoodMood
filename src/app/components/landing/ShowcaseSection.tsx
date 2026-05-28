@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { Scan, ChefHat, Users, CheckCircle2, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router";
+import { useLanguage } from "../../context/LanguageContext";
 
 const SCANNER_IMG = "https://images.unsplash.com/photo-1770350482639-363fe563311a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxncm9jZXJ5JTIwc2hvcHBpbmclMjBzdXN0YWluYWJsZSUyMGJhZ3N8ZW58MXx8fHwxNzc0MDA5Njc2fDA&ixlib=rb-4.1.0&q=80&w=1080";
 const RECIPE_IMG = "https://images.unsplash.com/photo-1767105267943-0d34ab68d2a1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoZWFsdGh5JTIwbWVhbCUyMHByZXAlMjBib3dsc3xlbnwxfHx8fDE3NzM5NDU4OTJ8MA&ixlib=rb-4.1.0&q=80&w=1080";
@@ -71,6 +72,7 @@ const showcases = [
 
 export function ShowcaseSection() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <section className="py-20 bg-white overflow-hidden">
@@ -90,14 +92,14 @@ export function ShowcaseSection() {
             <div className={showcase.imageRight ? "lg:col-start-1" : ""}>
               <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold mb-5 ${showcase.tagColor}`}>
                 <showcase.icon className="w-3.5 h-3.5" />
-                {showcase.tag}
+                {t(`landing.showcase.cards.${index}.tag`, showcase.tag)}
               </div>
 
               <h2 className="text-4xl md:text-5xl font-black text-[#1a2332] mb-6 leading-tight">
-                {showcase.title}
+                {t(`landing.showcase.cards.${index}.title`, showcase.title)}
               </h2>
               <p className="text-lg text-[#4A5568]/70 leading-relaxed mb-8">
-                {showcase.description}
+                {t(`landing.showcase.cards.${index}.description`, showcase.description)}
               </p>
 
               <ul className="space-y-3 mb-10">
@@ -114,7 +116,7 @@ export function ShowcaseSection() {
                       className="w-5 h-5 flex-shrink-0 mt-0.5"
                       style={{ color: showcase.accent }}
                     />
-                    <span className="text-[#4A5568] font-medium">{bullet}</span>
+                    <span className="text-[#4A5568] font-medium">{t(`landing.showcase.cards.${index}.bullets.${i}`, bullet)}</span>
                   </motion.li>
                 ))}
               </ul>
@@ -128,7 +130,7 @@ export function ShowcaseSection() {
                   border: `1.5px solid ${showcase.accent}40`,
                 }}
               >
-                {showcase.cta}
+                {t(`landing.showcase.cards.${index}.cta`, showcase.cta)}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
@@ -159,9 +161,9 @@ export function ShowcaseSection() {
                       <showcase.icon className="w-5 h-5" style={{ color: showcase.accent }} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-[#1a2332]">{showcase.tag.split(" ")[1] === "01" ? "Smart OCR Scanning" : showcase.tag.split(" ")[1] === "02" ? "AI Recipe Engine" : "Community Marketplace"}</p>
+                      <p className="text-sm font-bold text-[#1a2332]">{t(`landing.showcase.cards.${index}.overlayTitle`, showcase.tag.split(" ")[1] === "01" ? "Smart OCR Scanning" : showcase.tag.split(" ")[1] === "02" ? "AI Recipe Engine" : "Community Marketplace")}</p>
                       <p className="text-xs text-[#4A5568]/60">
-                        {index === 0 ? "95% accuracy rate" : index === 1 ? "500+ curated recipes" : "1,400+ active members"}
+                        {t(`landing.showcase.cards.${index}.overlayStat`, index === 0 ? "95% accuracy rate" : index === 1 ? "500+ curated recipes" : "1,400+ active members")}
                       </p>
                     </div>
                     <CheckCircle2

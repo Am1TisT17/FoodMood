@@ -15,6 +15,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import { motion } from "motion/react";
+import { useLanguage } from "../context/LanguageContext";
 
 const monthlyData = [
   { month: "Oct", foodSaved: 8.2, co2: 5.7, money: 24.5, waste: 3.1 },
@@ -56,6 +57,7 @@ const impactTrend = [
 
 export function Analytics() {
   const { userStats } = useFoodMood();
+  const { t } = useLanguage();
   const [period, setPeriod] = useState<"week" | "month" | "year">("month");
 
   const periods = ["week", "month", "year"] as const;
@@ -74,8 +76,8 @@ export function Analytics() {
             className="flex items-center justify-between flex-wrap gap-4 mb-8"
           >
             <div>
-              <h1 className="text-3xl font-bold text-[#4A5568] mb-1">Impact Analytics</h1>
-              <p className="text-[#4A5568]/60">Your sustainability journey in detail</p>
+              <h1 className="text-3xl font-bold text-[#4A5568] mb-1">{t("pages.analytics.title")}</h1>
+              <p className="text-[#4A5568]/60">{t("pages.analytics.subtitle")}</p>
             </div>
             <div className="flex gap-2 bg-white rounded-xl p-1 shadow-sm border border-gray-100">
               {periods.map((p) => (
@@ -88,7 +90,7 @@ export function Analytics() {
                       : "text-[#4A5568]/60 hover:text-[#4A5568]"
                   }`}
                 >
-                  {p}
+                  {t(`pages.analytics.${p}`, p)}
                 </button>
               ))}
             </div>
@@ -98,7 +100,7 @@ export function Analytics() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
               {
-                label: "Food Saved",
+                label: t("pages.analytics.foodSaved", "Food Saved"),
                 value: `${userStats.foodSavedKg} kg`,
                 icon: TrendingUp,
                 change: "+12%",
@@ -107,7 +109,7 @@ export function Analytics() {
                 bg: "bg-[#B2D2A4]/10",
               },
               {
-                label: "CO₂ Offset",
+                label: t("pages.analytics.co2Offset", "CO₂ Offset"),
                 value: `${userStats.co2Offset} kg`,
                 icon: Leaf,
                 change: "+8%",
@@ -116,7 +118,7 @@ export function Analytics() {
                 bg: "bg-green-50",
               },
               {
-                label: "Money Saved",
+                label: t("pages.analytics.moneySaved", "Money Saved"),
                 value: `${Math.round(userStats.moneySaved).toLocaleString('ru-RU')} ₸`,
                 icon: DollarSign,
                 change: "+18%",
@@ -125,7 +127,7 @@ export function Analytics() {
                 bg: "bg-slate-50",
               },
               {
-                label: "Waste Rate",
+                label: t("pages.analytics.wasteRate", "Waste Rate"),
                 value: "12%",
                 icon: BarChart2,
                 change: "-5%",
@@ -148,7 +150,7 @@ export function Analytics() {
                   <p className="text-xs text-[#4A5568]/50 mb-2">{kpi.label}</p>
                   <div className={`flex items-center gap-1 text-xs font-medium ${kpi.positive ? "text-green-500" : "text-red-400"}`}>
                     {kpi.positive ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
-                    {kpi.change} vs last {period}
+                    {kpi.change} {t("pages.analytics.vsLast", "vs last")} {t(`pages.analytics.${period}`, period)}
                   </div>
                 </Card>
               </motion.div>
@@ -165,7 +167,7 @@ export function Analytics() {
             >
               <Card className="p-6 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="font-bold text-[#4A5568]">Food Saved Over Time</h2>
+                  <h2 className="font-bold text-[#4A5568]">{t("pages.analytics.foodSavedOverTime", "Food Saved Over Time")}</h2>
                   <Badge className="bg-[#B2D2A4]/20 text-[#4A5568]">kg</Badge>
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
@@ -180,7 +182,7 @@ export function Analytics() {
                     <XAxis dataKey="month" stroke="#4A5568" tick={{ fontSize: 12 }} />
                     <YAxis stroke="#4A5568" tick={{ fontSize: 12 }} />
                     <Tooltip contentStyle={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "12px" }} />
-                    <Area type="monotone" dataKey="foodSaved" stroke="#B2D2A4" strokeWidth={2} fill="url(#colorFood)" name="Food Saved (kg)" />
+                    <Area type="monotone" dataKey="foodSaved" stroke="#B2D2A4" strokeWidth={2} fill="url(#colorFood)" name={`${t("pages.analytics.foodSaved", "Food Saved")} (kg)`} />
                   </AreaChart>
                 </ResponsiveContainer>
               </Card>
@@ -193,7 +195,7 @@ export function Analytics() {
               transition={{ delay: 0.25 }}
             >
               <Card className="p-6 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
-                <h2 className="font-bold text-[#4A5568] mb-6">Savings by Category</h2>
+                <h2 className="font-bold text-[#4A5568] mb-6">{t("pages.analytics.savingsByCategory", "Savings by Category")}</h2>
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie
@@ -226,20 +228,20 @@ export function Analytics() {
               transition={{ delay: 0.3 }}
             >
               <Card className="p-6 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
-                <h2 className="font-bold text-[#4A5568] mb-6">Weekly Consumption Breakdown</h2>
+                <h2 className="font-bold text-[#4A5568] mb-6">{t("pages.analytics.weeklyBreakdown", "Weekly Consumption Breakdown")}</h2>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={weeklyWaste}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="day" stroke="#4A5568" tick={{ fontSize: 12 }} />
                     <YAxis stroke="#4A5568" tick={{ fontSize: 12 }} />
                     <Tooltip contentStyle={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "12px" }} />
-                    <Bar dataKey="saved" fill="#B2D2A4" radius={[6, 6, 0, 0]} name="Saved" />
-                    <Bar dataKey="wasted" fill="#fbbf24" radius={[6, 6, 0, 0]} name="Wasted" />
+                    <Bar dataKey="saved" fill="#B2D2A4" radius={[6, 6, 0, 0]} name={t("pages.analytics.saved", "Saved")} />
+                    <Bar dataKey="wasted" fill="#fbbf24" radius={[6, 6, 0, 0]} name={t("pages.analytics.wasted", "Wasted")} />
                   </BarChart>
                 </ResponsiveContainer>
                 <div className="flex gap-4 mt-3 justify-center">
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-[#B2D2A4]" /><span className="text-xs text-[#4A5568]/60">Saved</span></div>
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-[#fbbf24]" /><span className="text-xs text-[#4A5568]/60">Wasted</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-[#B2D2A4]" /><span className="text-xs text-[#4A5568]/60">{t("pages.analytics.saved", "Saved")}</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-[#fbbf24]" /><span className="text-xs text-[#4A5568]/60">{t("pages.analytics.wasted", "Wasted")}</span></div>
                 </div>
               </Card>
             </motion.div>
@@ -252,7 +254,7 @@ export function Analytics() {
             >
               <Card className="p-6 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="font-bold text-[#4A5568]">Sustainability Score</h2>
+                  <h2 className="font-bold text-[#4A5568]">{t("pages.analytics.sustainabilityScore", "Sustainability Score")}</h2>
                   <div className="text-2xl font-bold text-[#B2D2A4]">94</div>
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
@@ -267,7 +269,7 @@ export function Analytics() {
                       stroke="#B2D2A4"
                       strokeWidth={3}
                       dot={{ fill: "#B2D2A4", r: 5 }}
-                      name="Score"
+                      name={t("pages.analytics.sustainabilityScore", "Score")}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -284,13 +286,13 @@ export function Analytics() {
             <Card className="p-6 rounded-[24px] shadow-[0px_4px_12px_rgba(0,0,0,0.05)]">
               <div className="flex items-center gap-2 mb-6">
                 <Target className="w-5 h-5 text-[#B2D2A4]" />
-                <h2 className="font-bold text-[#4A5568]">Monthly Goals Progress</h2>
+                <h2 className="font-bold text-[#4A5568]">{t("pages.analytics.monthlyGoals", "Monthly Goals Progress")}</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[
-                  { label: "Food Saved", current: 26.4, target: 30, unit: "kg", color: "bg-[#B2D2A4]" },
-                  { label: "CO₂ Offset", current: 18.5, target: 25, unit: "kg", color: "bg-green-400" },
-                  { label: "Money Saved", current: 78.6, target: 100, unit: "$", color: "bg-[#4A5568]" },
+                  { label: t("pages.analytics.foodSaved", "Food Saved"), current: 26.4, target: 30, unit: "kg", color: "bg-[#B2D2A4]" },
+                  { label: t("pages.analytics.co2Offset", "CO₂ Offset"), current: 18.5, target: 25, unit: "kg", color: "bg-green-400" },
+                  { label: t("pages.analytics.moneySaved", "Money Saved"), current: 78.6, target: 100, unit: "$", color: "bg-[#4A5568]" },
                 ].map((goal, index) => (
                   <div key={index}>
                     <div className="flex items-center justify-between mb-2">
@@ -310,7 +312,7 @@ export function Analytics() {
                       />
                     </div>
                     <p className="text-xs text-[#4A5568]/40 mt-1">
-                      {Math.round((goal.current / goal.target) * 100)}% of monthly goal
+                      {Math.round((goal.current / goal.target) * 100)}% {t("pages.analytics.ofMonthlyGoal", "of monthly goal")}
                     </p>
                   </div>
                 ))}
@@ -318,10 +320,10 @@ export function Analytics() {
 
               <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { icon: "🌿", value: "47", label: "Items Saved This Month" },
-                  { icon: "🍳", value: "12", label: "Recipes Cooked" },
-                  { icon: "🤝", value: "5", label: "Items Shared" },
-                  { icon: "📱", value: "8", label: "Receipts Scanned" },
+                  { icon: "🌿", value: "47", label: t("pages.analytics.itemsSavedThisMonth", "Items Saved This Month") },
+                  { icon: "🍳", value: "12", label: t("pages.analytics.recipesCooked", "Recipes Cooked") },
+                  { icon: "🤝", value: "5", label: t("pages.analytics.itemsShared", "Items Shared") },
+                  { icon: "📱", value: "8", label: t("pages.analytics.receiptsScanned", "Receipts Scanned") },
                 ].map((stat, i) => (
                   <div key={i} className="text-center p-4 bg-gray-50 rounded-2xl">
                     <div className="text-2xl mb-1">{stat.icon}</div>

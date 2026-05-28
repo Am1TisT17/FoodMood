@@ -10,13 +10,22 @@ import { Progress } from "../components/ui/progress";
 import { Search, Check, Trash2, Gift, Plus } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
+import { useLanguage } from "../context/LanguageContext";
 
 export function Pantry() {
   const { inventory, consumeItem, discardItem, shareItem } = useFoodMood();
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Dairy", "Meat", "Veggies", "Fruits", "Grains"];
+  const categories = [
+    { value: "All", label: t("pages.pantry.all", "All") },
+    { value: "Dairy", label: t("pages.pantry.dairy", "Dairy") },
+    { value: "Meat", label: t("pages.pantry.meat", "Meat") },
+    { value: "Veggies", label: t("pages.pantry.veggies", "Veggies") },
+    { value: "Fruits", label: t("pages.pantry.fruits", "Fruits") },
+    { value: "Grains", label: t("pages.pantry.grains", "Grains") },
+  ];
 
   const getFreshnessPercentage = (expiryDate: string) => {
     const today = new Date();
@@ -49,17 +58,17 @@ export function Pantry() {
 
   const handleConsume = (id: string, name: string) => {
     consumeItem(id);
-    toast.success(`${name} marked as consumed!`);
+    toast.success(`${name} ${t("pages.pantry.consumedToast", "marked as consumed!")}`);
   };
 
   const handleDiscard = (id: string, name: string) => {
     discardItem(id);
-    toast.error(`${name} discarded`);
+    toast.error(`${name} ${t("pages.pantry.discardedToast", "discarded")}`);
   };
 
   const handleShare = (id: string, name: string) => {
     shareItem(id);
-    toast.success(`${name} shared with community!`);
+    toast.success(`${name} ${t("pages.pantry.sharedToast", "shared with community!")}`);
   };
 
   return (
@@ -73,7 +82,7 @@ export function Pantry() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <h1 className="text-3xl font-bold text-[#4A5568] mb-6">Digital Pantry</h1>
+            <h1 className="text-3xl font-bold text-[#4A5568] mb-6">{t("pages.pantry.title")}</h1>
           </motion.div>
 
           {/* Search & Filter Bar */}
@@ -88,7 +97,7 @@ export function Pantry() {
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#4A5568]/40" />
                   <Input
-                    placeholder="Search items..."
+                    placeholder={t("pages.pantry.searchPlaceholder")}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -97,12 +106,12 @@ export function Pantry() {
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {categories.map((category) => (
                     <Button
-                      key={category}
-                      variant={selectedCategory === category ? "default" : "outline"}
-                      onClick={() => setSelectedCategory(category)}
-                      className={selectedCategory === category ? "bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568]" : ""}
+                      key={category.value}
+                      variant={selectedCategory === category.value ? "default" : "outline"}
+                      onClick={() => setSelectedCategory(category.value)}
+                      className={selectedCategory === category.value ? "bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568]" : ""}
                     >
-                      {category}
+                      {category.label}
                     </Button>
                   ))}
                 </div>
@@ -114,7 +123,7 @@ export function Pantry() {
           <div className="grid grid-cols-1 gap-4">
             {filteredInventory.length === 0 ? (
               <Card className="p-12 text-center">
-                <p className="text-[#4A5568]/60">No items found</p>
+                <p className="text-[#4A5568]/60">{t("pages.pantry.noItems")}</p>
               </Card>
             ) : (
               filteredInventory.map((item, index) => {
@@ -153,15 +162,15 @@ export function Pantry() {
                           {/* Freshness Indicator */}
                           <div className="space-y-2">
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-[#4A5568]/60">Freshness</span>
+                              <span className="text-[#4A5568]/60">{t("pages.pantry.freshness", "Freshness")}</span>
                               <span className={`font-medium ${
                                 daysLeft < 0 ? 'text-red-500' : 
                                 daysLeft <= 3 ? 'text-amber-500' : 
                                 'text-[#B2D2A4]'
                               }`}>
-                                {daysLeft < 0 ? 'Expired' : 
-                                 daysLeft === 0 ? 'Expires today' : 
-                                 `${daysLeft} days left`}
+                                {daysLeft < 0 ? t("pages.pantry.expired", "Expired") : 
+                                 daysLeft === 0 ? t("pages.pantry.expiresToday", "Expires today") : 
+                                 `${daysLeft} ${t("pages.pantry.daysLeft", "days left")}`}
                               </span>
                             </div>
                             <Progress 
@@ -184,7 +193,7 @@ export function Pantry() {
                             className="flex-1 md:flex-none border-[#B2D2A4] text-[#B2D2A4] hover:bg-[#B2D2A4] hover:text-white"
                           >
                             <Check className="w-4 h-4 md:mr-2" />
-                            <span className="hidden md:inline">Consumed</span>
+                            <span className="hidden md:inline">{t("pages.pantry.consumed", "Consumed")}</span>
                           </Button>
                           <Button
                             size="sm"
@@ -193,7 +202,7 @@ export function Pantry() {
                             className="flex-1 md:flex-none border-[#4A5568] text-[#4A5568] hover:bg-[#4A5568] hover:text-white"
                           >
                             <Gift className="w-4 h-4 md:mr-2" />
-                            <span className="hidden md:inline">Share</span>
+                            <span className="hidden md:inline">{t("pages.pantry.share", "Share")}</span>
                           </Button>
                           <Button
                             size="sm"
@@ -202,7 +211,7 @@ export function Pantry() {
                             className="flex-1 md:flex-none border-red-400 text-red-400 hover:bg-red-400 hover:text-white"
                           >
                             <Trash2 className="w-4 h-4 md:mr-2" />
-                            <span className="hidden md:inline">Discard</span>
+                            <span className="hidden md:inline">{t("pages.pantry.discard", "Discard")}</span>
                           </Button>
                         </div>
                       </div>
@@ -223,13 +232,13 @@ export function Pantry() {
               <Card className="p-12">
                 <Plus className="w-16 h-16 text-[#4A5568]/20 mx-auto mb-4" />
                 <h2 className="text-xl font-semibold text-[#4A5568] mb-2">
-                  Your pantry is empty
+                  {t("pages.pantry.emptyTitle", "Your pantry is empty")}
                 </h2>
                 <p className="text-[#4A5568]/60 mb-6">
-                  Start by scanning a receipt or adding items manually
+                  {t("pages.pantry.emptyText", "Start by scanning a receipt or adding items manually")}
                 </p>
                 <Button className="bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#4A5568]">
-                  Add First Item
+                  {t("pages.pantry.addFirstItem", "Add First Item")}
                 </Button>
               </Card>
             </motion.div>

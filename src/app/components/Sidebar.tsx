@@ -1,3 +1,4 @@
+import React from "react";
 import { NavLink, useNavigate } from "react-router";
 import {
   Home, Package, Scan, ChefHat, Users, Leaf,
@@ -6,25 +7,26 @@ import {
 import { cn } from "./ui/utils";
 import { useFoodMood } from "../context/FoodMoodContext";
 import { auth } from "../../lib/api";
-
-const mainNav = [
-  { path: "/dashboard", icon: Home, label: "Dashboard" },
-  { path: "/pantry", icon: Package, label: "Pantry" },
-  { path: "/scanner", icon: Scan, label: "Scanner" },
-  { path: "/recipes", icon: ChefHat, label: "Recipes" },
-  { path: "/community", icon: Users, label: "Community" },
-  { path: "/analytics", icon: BarChart2, label: "Analytics" },
-];
-
-const accountNav = [
-  { path: "/notifications", icon: Bell, label: "Notifications" },
-  { path: "/profile", icon: Settings, label: "Settings" },
-];
+import { supportedLanguages, useLanguage } from "../context/LanguageContext";
 
 export function Sidebar() {
   const navigate = useNavigate();
   const { userName, userStats } = useFoodMood();
-  const displayName = userName || "Guest";
+  const { language, setLanguage, t } = useLanguage();
+  const mainNav = [
+    { path: "/dashboard", icon: Home, label: t("nav.dashboard") },
+    { path: "/pantry", icon: Package, label: t("nav.pantry") },
+    { path: "/scanner", icon: Scan, label: t("nav.scanner") },
+    { path: "/recipes", icon: ChefHat, label: t("nav.recipes") },
+    { path: "/community", icon: Users, label: t("nav.community") },
+    { path: "/analytics", icon: BarChart2, label: t("nav.analytics") },
+  ];
+
+  const accountNav = [
+    { path: "/notifications", icon: Bell, label: t("nav.notifications") },
+    { path: "/profile", icon: Settings, label: t("nav.settings") },
+  ];
+  const displayName = userName || t("common.guest", "Guest");
   const initial = (displayName.trim()[0] || "G").toUpperCase();
 
   const handleSignOut = () => {
@@ -47,7 +49,7 @@ export function Sidebar() {
             <span className="text-white font-bold text-lg tracking-tight">FoodMood</span>
             <div className="flex items-center gap-1 mt-0.5">
               <div className="w-1.5 h-1.5 rounded-full bg-[#B2D2A4] animate-pulse" />
-              <span className="text-white/30 text-xs">Live</span>
+              <span className="text-white/30 text-xs">{t("common.live", "Live")}</span>
             </div>
           </div>
         </div>
@@ -56,7 +58,7 @@ export function Sidebar() {
       {/* Main nav */}
       <nav className="flex-1 p-4 overflow-y-auto">
         <p className="text-xs font-bold text-white/25 uppercase tracking-widest px-3 mb-3">
-          Main
+          {t("nav.main")}
         </p>
         {mainNav.map((item) => (
           <NavLink
@@ -94,7 +96,7 @@ export function Sidebar() {
 
         <div className="border-t border-white/8 my-4" />
         <p className="text-xs font-bold text-white/25 uppercase tracking-widest px-3 mb-3">
-          Account
+          {t("nav.account")}
         </p>
         {accountNav.map((item) => (
           <NavLink
@@ -150,8 +152,22 @@ export function Sidebar() {
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/35 hover:text-white/70 hover:bg-white/6 transition-all text-sm"
         >
           <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
+          <span>{t("nav.signOut")}</span>
         </button>
+        <div className="mt-3 flex gap-2">
+          {supportedLanguages.map((lang) => (
+            <button
+              key={lang}
+              onClick={() => setLanguage(lang)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs uppercase font-semibold",
+                language === lang ? "bg-white text-[#1a2332]" : "bg-white/10 text-white/70"
+              )}
+            >
+              {lang}
+            </button>
+          ))}
+        </div>
       </div>
     </aside>
   );

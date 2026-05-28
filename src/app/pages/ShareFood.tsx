@@ -13,10 +13,12 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
+import { useLanguage } from "../context/LanguageContext";
 
 export function ShareFood() {
   const navigate = useNavigate();
   const { inventory } = useFoodMood();
+  const { t } = useLanguage();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -121,8 +123,8 @@ export function ShareFood() {
               <ArrowLeft className="w-4 h-4" />
               <span className="text-sm">Back</span>
             </button>
-            <h1 className="text-3xl font-bold text-[#4A5568] mb-1">Share Food</h1>
-            <p className="text-[#4A5568]/60">Help your community by sharing surplus food</p>
+            <h1 className="text-3xl font-bold text-[#4A5568] mb-1">{t("pages.shareFood.title")}</h1>
+            <p className="text-[#4A5568]/60">{t("pages.shareFood.subtitle")}</p>
           </motion.div>
 
           {/* Progress Steps */}

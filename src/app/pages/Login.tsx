@@ -7,6 +7,7 @@ import { Leaf, Eye, EyeOff, Mail, Lock, User, Check, ArrowLeft } from "lucide-re
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { api } from "../../lib/api";
+import { useLanguage } from "../context/LanguageContext";
 
 // Google Identity Services — loaded once per page, regardless of how many
 // Google buttons the screen has. The script exposes `window.google.accounts.id`.
@@ -40,6 +41,7 @@ function loadGsiScript(): Promise<void> {
 
 export function Login() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
@@ -196,7 +198,7 @@ export function Login() {
               : "bg-white text-[#4A5568]/60 border border-gray-200"
           }`}
         >
-          Sign In
+          {t("pages.auth.signIn")}
         </button>
         <button
           onClick={() => setMobileTab("signup")}
@@ -206,7 +208,7 @@ export function Login() {
               : "bg-white text-[#4A5568]/60 border border-gray-200"
           }`}
         >
-          Create Account
+          {t("pages.auth.createAccount")}
         </button>
       </div>
 
@@ -278,7 +280,7 @@ export function Login() {
                       onClick={() => navigate("/forgot-password")}
                       className="text-xs text-[#B2D2A4] hover:underline"
                     >
-                      Forgot password?
+                      {t("pages.auth.forgotPassword")}
                     </button>
                   </div>
                   <div className="relative">
@@ -323,7 +325,7 @@ export function Login() {
                       className="w-5 h-5 border-2 border-[#4A5568]/30 border-t-[#4A5568] rounded-full"
                     />
                   ) : (
-                    "Sign In"
+                    t("pages.auth.signIn")
                   )}
                 </Button>
               </form>
@@ -334,7 +336,7 @@ export function Login() {
                   className="text-[#B2D2A4] font-medium hover:underline md:hidden"
                   onClick={() => setMobileTab("signup")}
                 >
-                  Sign up
+                  {t("pages.auth.createAccount")}
                 </button>
                 <span className="hidden md:inline text-[#4A5568]/50">Create one on the right →</span>
               </p>
@@ -521,7 +523,7 @@ export function Login() {
                   className="text-[#B2D2A4] font-medium hover:underline md:hidden"
                   onClick={() => setMobileTab("login")}
                 >
-                  Sign in
+                  {t("pages.auth.signIn")}
                 </button>
                 <span className="hidden md:inline text-white/40">← Sign in on the left</span>
               </p>

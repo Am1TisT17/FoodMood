@@ -4,6 +4,7 @@ import {
   Zap, Globe, Smartphone, Star, ArrowRight
 } from "lucide-react";
 import { useNavigate } from "react-router";
+import { useLanguage } from "../../context/LanguageContext";
 
 const features = [
   {
@@ -77,6 +78,7 @@ const highlights = [
 
 export function FeaturesSection() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <section id="features" className="py-32 bg-white">
@@ -90,15 +92,14 @@ export function FeaturesSection() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#B2D2A4]/15 border border-[#B2D2A4]/30 text-sm font-medium text-[#4A5568] mb-6">
             <Zap className="w-4 h-4 text-[#B2D2A4]" />
-            Everything in one platform
+            {t("landing.features.eyebrow", "Everything in one platform")}
           </div>
           <h2 className="text-5xl md:text-6xl font-black text-[#1a2332] mb-6 leading-tight">
-            Powerful features for{" "}
-            <span className="text-[#B2D2A4]">smarter</span> eating
+            {t("landing.features.titlePrefix", "Powerful features for")}{" "}
+            <span className="text-[#B2D2A4]">{t("landing.features.titleHighlight", "smarter")}</span> {t("landing.features.titleSuffix", "eating")}
           </h2>
           <p className="text-xl text-[#4A5568]/60 max-w-2xl mx-auto leading-relaxed">
-            From AI-powered scanning to community sharing, FoodMood gives you every tool
-            to eliminate food waste and live more sustainably.
+            {t("landing.features.subtitle", "From AI-powered scanning to community sharing, FoodMood gives you every tool to eliminate food waste and live more sustainably.")}
           </p>
         </motion.div>
 
@@ -120,13 +121,13 @@ export function FeaturesSection() {
                   <feature.icon className={`w-6 h-6 ${feature.iconColor}`} />
                 </div>
                 <span className={`text-xs font-bold px-3 py-1 rounded-full ${feature.iconBg} ${feature.iconColor}`}>
-                  {feature.badge}
+                  {t(`landing.features.cards.${index}.badge`, feature.badge)}
                 </span>
               </div>
-              <h3 className="text-lg font-bold text-[#1a2332] mb-3">{feature.title}</h3>
-              <p className="text-sm text-[#4A5568]/70 leading-relaxed mb-4">{feature.description}</p>
+              <h3 className="text-lg font-bold text-[#1a2332] mb-3">{t(`landing.features.cards.${index}.title`, feature.title)}</h3>
+              <p className="text-sm text-[#4A5568]/70 leading-relaxed mb-4">{t(`landing.features.cards.${index}.description`, feature.description)}</p>
               <div className={`flex items-center gap-1.5 text-sm font-semibold ${feature.iconColor} opacity-0 group-hover:opacity-100 transition-opacity`}>
-                Explore feature
+                {t("landing.features.explore", "Explore feature")}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </motion.div>
@@ -145,7 +146,7 @@ export function FeaturesSection() {
               <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
                 <h.icon className="w-4 h-4 text-[#B2D2A4]" />
               </div>
-              <span className="text-sm font-medium text-white/80">{h.text}</span>
+              <span className="text-sm font-medium text-white/80">{t(`landing.features.highlights.${i}`, h.text)}</span>
             </div>
           ))}
         </motion.div>

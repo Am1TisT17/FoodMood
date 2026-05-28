@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { ShoppingCart, Scan, ChefHat, TrendingUp, ArrowDown } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
 const steps = [
   {
@@ -41,6 +42,8 @@ const steps = [
 ];
 
 export function HowItWorksSection() {
+  const { t } = useLanguage();
+
   return (
     <section id="how-it-works" className="py-32 bg-gradient-to-b from-gray-50 to-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
@@ -53,15 +56,14 @@ export function HowItWorksSection() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#1a2332]/8 text-sm font-medium text-[#4A5568] mb-6">
             <span className="w-2 h-2 rounded-full bg-[#B2D2A4]" />
-            Simple 4-step process
+            {t("landing.how.eyebrow", "Simple 4-step process")}
           </div>
           <h2 className="text-5xl md:text-6xl font-black text-[#1a2332] mb-6 leading-tight">
-            Start saving in{" "}
-            <span className="text-[#B2D2A4]">minutes</span>
+            {t("landing.how.titlePrefix", "Start saving in")}{" "}
+            <span className="text-[#B2D2A4]">{t("landing.how.titleHighlight", "minutes")}</span> {t("landing.how.titleSuffix", "")}
           </h2>
           <p className="text-xl text-[#4A5568]/60 max-w-2xl mx-auto">
-            Getting started is effortless. No complicated setup, no learning curve —
-            just scan and start saving right away.
+            {t("landing.how.subtitle", "Getting started is effortless. No complicated setup, no learning curve — just scan and start saving right away.")}
           </p>
         </motion.div>
 
@@ -97,8 +99,8 @@ export function HowItWorksSection() {
                     {step.number}
                   </span>
                 </div>
-                <h3 className="text-lg font-bold text-[#1a2332] mb-3">{step.title}</h3>
-                <p className="text-sm text-[#4A5568]/70 leading-relaxed">{step.description}</p>
+                <h3 className="text-lg font-bold text-[#1a2332] mb-3">{t(`landing.how.steps.${index}.title`, step.title)}</h3>
+                <p className="text-sm text-[#4A5568]/70 leading-relaxed">{t(`landing.how.steps.${index}.description`, step.description)}</p>
               </div>
             </motion.div>
           ))}
@@ -134,11 +136,11 @@ export function HowItWorksSection() {
                     className="text-xs font-black"
                     style={{ color: step.color }}
                   >
-                    Step {step.number}
+                    {t("landing.how.step", "Step")} {step.number}
                   </span>
                 </div>
-                <h3 className="text-lg font-bold text-[#1a2332] mb-2">{step.title}</h3>
-                <p className="text-sm text-[#4A5568]/70 leading-relaxed">{step.description}</p>
+                <h3 className="text-lg font-bold text-[#1a2332] mb-2">{t(`landing.how.steps.${index}.title`, step.title)}</h3>
+                <p className="text-sm text-[#4A5568]/70 leading-relaxed">{t(`landing.how.steps.${index}.description`, step.description)}</p>
               </div>
             </motion.div>
           ))}
@@ -153,18 +155,18 @@ export function HowItWorksSection() {
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#B2D2A4]/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <div className="relative z-10">
-            <p className="text-[#B2D2A4] font-semibold mb-3">Ready to start?</p>
+            <p className="text-[#B2D2A4] font-semibold mb-3">{t("landing.how.ready", "Ready to start?")}</p>
             <h3 className="text-3xl font-black text-white mb-4">
-              Join 48,200+ households already saving
+              {t("landing.how.join", "Join 48,200+ households already saving")}
             </h3>
             <p className="text-white/60 mb-8 max-w-lg mx-auto">
-              Free to use. No credit card required. Start your sustainability journey today.
+              {t("landing.how.free", "Free to use. No credit card required. Start your sustainability journey today.")}
             </p>
             <a
               href="/login"
               className="inline-flex items-center gap-2 px-8 py-4 bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#1a2332] rounded-2xl font-bold text-lg transition-all shadow-xl shadow-[#B2D2A4]/30 hover:shadow-2xl"
             >
-              Get started for free
+              {t("landing.how.getStarted", "Get started for free")}
               <ArrowDown className="w-5 h-5 rotate-[-90deg]" />
             </a>
           </div>

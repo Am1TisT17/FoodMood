@@ -18,6 +18,7 @@ import {
 import { motion } from "motion/react";
 import { api, RecipeFeedbackAction } from "../../lib/api";
 import { formatPersonalRankLabel, personalRankPercent } from "../../lib/mlFormat";
+import { useLanguage } from "../context/LanguageContext";
 
 const weeklyData = [
   { day: "Mon", waste: 2, consumed: 8 },
@@ -41,6 +42,7 @@ const trendData = [
 export function Dashboard() {
   const navigate = useNavigate();
   const { inventory, userName, userStats, recipes, recommendationsInfo } = useFoodMood();
+  const { t } = useLanguage();
   const [showFAB, setShowFAB] = useState(false);
 
   const source = recommendationsInfo?.source || "fallback";
@@ -50,9 +52,9 @@ export function Dashboard() {
 
   const getTimeGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
+    if (hour < 12) return t("pages.dashboard.greetingMorning");
+    if (hour < 18) return t("pages.dashboard.greetingAfternoon");
+    return t("pages.dashboard.greetingEvening");
   };
 
   const getExpiringItems = () => {
@@ -84,36 +86,36 @@ export function Dashboard() {
 
   const kpis = [
     {
-      label: "Food Saved",
+      label: t("pages.dashboard.foodSaved", "Food Saved"),
       value: `${userStats.foodSavedKg} kg`,
-      sublabel: "↑ 12% vs last month",
+      sublabel: `↑ 12% ${t("pages.dashboard.vsLastMonth", "vs last month")}`,
       icon: TrendingUp,
       color: "text-[#B2D2A4]",
       bg: "bg-[#B2D2A4]/10",
       trend: true,
     },
     {
-      label: "CO₂ Offset",
+      label: t("pages.dashboard.co2Offset", "CO₂ Offset"),
       value: `${userStats.co2Offset} kg`,
-      sublabel: "↑ 8% vs last month",
+      sublabel: `↑ 8% ${t("pages.dashboard.vsLastMonth", "vs last month")}`,
       icon: Leaf,
       color: "text-emerald-500",
       bg: "bg-emerald-50",
       trend: true,
     },
     {
-      label: "Money Saved",
+      label: t("pages.dashboard.moneySaved", "Money Saved"),
       value: `${Math.round(userStats.moneySaved).toLocaleString('ru-RU')} ₸`,
-      sublabel: "↑ 18% vs last month",
+      sublabel: `↑ 18% ${t("pages.dashboard.vsLastMonth", "vs last month")}`,
       icon: DollarSign,
       color: "text-[#4A5568]",
       bg: "bg-slate-100",
       trend: true,
     },
     {
-      label: "Items in Pantry",
+      label: t("pages.dashboard.itemsInPantry", "Items in Pantry"),
       value: inventory.length,
-      sublabel: `${expiringItems.length} expiring soon`,
+      sublabel: `${expiringItems.length} ${t("pages.dashboard.expiringSoonShort", "expiring soon")}`,
       icon: Package,
       color: "text-amber-500",
       bg: "bg-amber-50",
@@ -134,7 +136,7 @@ export function Dashboard() {
               <h1 className="font-bold text-[#1a2332]">
                 {getTimeGreeting()}, {userName}! 🌿
               </h1>
-              <p className="text-xs text-[#4A5568]/50">Here&apos;s your sustainability overview</p>
+              <p className="text-xs text-[#4A5568]/50">{t("pages.dashboard.overview")}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -144,7 +146,7 @@ export function Dashboard() {
                 className="rounded-xl border-gray-200 text-sm hidden sm:flex"
               >
                 <BarChart2 className="w-4 h-4 mr-1.5 text-[#B2D2A4]" />
-                Analytics
+                {t("pages.dashboard.analytics", "Analytics")}
               </Button>
               <Button
                 variant="outline"
@@ -171,7 +173,7 @@ export function Dashboard() {
             <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-linear-to-r from-[#1a2332] to-[#2d3748] rounded-2xl shadow-lg">
               <Flame className="w-4 h-4 text-[#B2D2A4]" />
               <span className="text-white text-sm font-semibold">
-                Waste Warrior — Level {userStats.wasteWarriorLevel}
+                {t("pages.dashboard.level", "Waste Warrior — Level")} {userStats.wasteWarriorLevel}
               </span>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map((i) => (
@@ -228,10 +230,10 @@ export function Dashboard() {
               <Card className="p-6 rounded-3xl border-0 shadow-[0_2px_16px_rgba(0,0,0,0.06)]">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="font-bold text-[#1a2332]">Weekly Consumption</h2>
-                    <p className="text-xs text-[#4A5568]/50">Consumed vs Wasted items</p>
+                    <h2 className="font-bold text-[#1a2332]">{t("pages.dashboard.weeklyConsumption", "Weekly Consumption")}</h2>
+                    <p className="text-xs text-[#4A5568]/50">{t("pages.dashboard.consumedVsWasted", "Consumed vs Wasted items")}</p>
                   </div>
-                  <Badge className="bg-[#B2D2A4]/20 text-[#4A5568] border-0 text-xs">This Week</Badge>
+                  <Badge className="bg-[#B2D2A4]/20 text-[#4A5568] border-0 text-xs">{t("common.thisWeek", "This Week")}</Badge>
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={weeklyData} barGap={4}>
@@ -247,18 +249,18 @@ export function Dashboard() {
                         fontSize: "12px",
                       }}
                     />
-                    <Bar dataKey="consumed" fill="#B2D2A4" radius={[6, 6, 0, 0]} name="Consumed" />
-                    <Bar dataKey="waste" fill="#fbbf24" radius={[6, 6, 0, 0]} name="Wasted" />
+                    <Bar dataKey="consumed" fill="#B2D2A4" radius={[6, 6, 0, 0]} name={t("pages.dashboard.consumed", "Consumed")} />
+                    <Bar dataKey="waste" fill="#fbbf24" radius={[6, 6, 0, 0]} name={t("pages.dashboard.wasted", "Wasted")} />
                   </BarChart>
                 </ResponsiveContainer>
                 <div className="flex items-center gap-5 mt-3">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded bg-[#B2D2A4]" />
-                    <span className="text-xs text-[#4A5568]/60">Consumed</span>
+                    <span className="text-xs text-[#4A5568]/60">{t("pages.dashboard.consumed", "Consumed")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded bg-[#fbbf24]" />
-                    <span className="text-xs text-[#4A5568]/60">Wasted</span>
+                    <span className="text-xs text-[#4A5568]/60">{t("pages.dashboard.wasted", "Wasted")}</span>
                   </div>
                 </div>
               </Card>
@@ -272,11 +274,11 @@ export function Dashboard() {
             >
               <Card className="p-6 rounded-3xl border-0 shadow-[0_2px_16px_rgba(0,0,0,0.06)] h-full">
                 <div className="mb-4">
-                  <h2 className="font-bold text-[#1a2332]">Food Saved Trend</h2>
-                  <p className="text-xs text-[#4A5568]/50">kg saved per week</p>
+                  <h2 className="font-bold text-[#1a2332]">{t("pages.dashboard.foodSavedTrend", "Food Saved Trend")}</h2>
+                  <p className="text-xs text-[#4A5568]/50">{t("pages.dashboard.kgSavedPerWeek", "kg saved per week")}</p>
                 </div>
                 <div className="text-3xl font-black text-[#1a2332] mb-1">10.2 kg</div>
-                <div className="text-xs text-emerald-500 font-semibold mb-4">↑ 14% this week</div>
+                <div className="text-xs text-emerald-500 font-semibold mb-4">↑ 14% {t("common.thisWeek", "this week")}</div>
                 <ResponsiveContainer width="100%" height={140}>
                   <AreaChart data={trendData}>
                     <defs>
@@ -306,9 +308,9 @@ export function Dashboard() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Clock className="w-5 h-5 text-amber-500" />
-                  <h2 className="font-bold text-[#1a2332]">Expiring Soon</h2>
+                  <h2 className="font-bold text-[#1a2332]">{t("pages.dashboard.expiringSoon", "Expiring Soon")}</h2>
                   <Badge className="bg-amber-100 text-amber-600 border-0 text-xs">
-                    {expiringItems.length} items
+                    {expiringItems.length} {t("common.items", "items")}
                   </Badge>
                 </div>
                 <Button
@@ -317,7 +319,7 @@ export function Dashboard() {
                   onClick={() => navigate("/pantry")}
                   className="text-[#4A5568]/60 hover:text-[#1a2332] text-sm"
                 >
-                  View all
+                  {t("common.viewAll", "View all")}
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>
@@ -344,7 +346,7 @@ export function Dashboard() {
                               : "bg-amber-100 text-amber-600"
                           }`}
                         >
-                          {days === 0 ? "Today!" : `${days}d left`}
+                          {days === 0 ? t("pages.dashboard.todayBang", "Today!") : `${days}${t("pages.dashboard.daysLeft", "d left")}`}
                         </span>
                       </div>
                       <Button
@@ -353,7 +355,7 @@ export function Dashboard() {
                         onClick={() => navigate("/recipes")}
                       >
                         <ChefHat className="w-3.5 h-3.5 mr-1.5" />
-                        Find Recipe
+                        {t("pages.dashboard.findRecipe", "Find Recipe")}
                       </Button>
                     </Card>
                   );
@@ -373,16 +375,16 @@ export function Dashboard() {
                 <ChefHat className="w-5 h-5 text-[#B2D2A4]" />
                 <h2 className="font-bold text-[#1a2332]">
                   {isML && personalizationApplied
-                    ? "AI Recipe Suggestions"
+                    ? t("pages.dashboard.aiRecipeSuggestions", "AI Recipe Suggestions")
                     : isML
-                    ? "Recipe Suggestions"
-                    : "Recommended Recipes"}
+                    ? t("pages.dashboard.recipeSuggestions", "Recipe Suggestions")
+                    : t("pages.dashboard.recommendedRecipes", "Recommended Recipes")}
                 </h2>
                 {/* ML personalization badge in header */}
                 {isML && personalizationApplied && (
                   <Badge variant="outline" className="text-emerald-700 border-emerald-200 text-xs bg-emerald-50">
                     <Sparkles className="w-3 h-3 mr-1" />
-                    Personalized
+                    {t("pages.dashboard.personalized", "Personalized")}
                   </Badge>
                 )}
               </div>
@@ -392,7 +394,7 @@ export function Dashboard() {
                 onClick={() => navigate("/recipes")}
                 className="text-[#4A5568]/60 hover:text-[#1a2332] text-sm"
               >
-                View all
+                {t("common.viewAll", "View all")}
                 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
@@ -404,7 +406,7 @@ export function Dashboard() {
                 <span>
                   {meta?.personalizationDisabledReason
                     ? meta.personalizationDisabledReason
-                    : "Personalization temporarily unavailable — showing general recommendations"}
+                    : t("pages.dashboard.personalizationUnavailable", "Personalization temporarily unavailable — showing general recommendations")}
                 </span>
               </div>
             )}
@@ -429,18 +431,18 @@ export function Dashboard() {
                       <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
                       <div className="absolute top-3 right-3 flex flex-col gap-1 items-end">
                         <span className="px-2.5 py-1 bg-[#B2D2A4] text-[#1a2332] text-xs font-bold rounded-xl shadow">
-                          {recipe.matchPercentage}% Match
+                          {recipe.matchPercentage}% {t("pages.dashboard.match", "Match")}
                         </span>
                         {isML && personalizationApplied && (
                           <span className="px-2 py-0.5 bg-white/90 text-emerald-700 border border-emerald-200 text-[10px] font-medium rounded-lg flex items-center">
                             <Sparkles className="w-3 h-3 mr-1" />
-                            Personalized
+                            {t("pages.dashboard.personalized", "Personalized")}
                           </span>
                         )}
                         {personalRankPercent(recipe.personalRank) != null && (
                           <span className="px-2 py-0.5 bg-white/90 text-indigo-600 border border-indigo-200 text-[10px] font-medium rounded-lg flex items-center">
                             <Star className="w-3 h-3 mr-1" />
-                            {formatPersonalRankLabel(recipe.personalRank)} Relevance
+                            {formatPersonalRankLabel(recipe.personalRank)} {t("pages.dashboard.relevance", "Relevance")}
                           </span>
                         )}
                       </div>
@@ -448,8 +450,8 @@ export function Dashboard() {
                     <div className="p-5">
                       <h3 className="font-bold text-[#1a2332] mb-2">{recipe.name}</h3>
                       <div className="flex items-center gap-3 text-xs text-[#4A5568]/50">
-                        <span>⏱ {recipe.cookingTime} min</span>
-                        <span>🍽 {recipe.servings} servings</span>
+                        <span>⏱ {recipe.cookingTime} {t("pages.dashboard.min", "min")}</span>
+                        <span>{recipe.servings} {t("pages.dashboard.servings", "servings")}</span>
                       </div>
                     </div>
                   </Card>
@@ -473,14 +475,14 @@ export function Dashboard() {
               className="bg-white text-[#1a2332] shadow-xl hover:bg-gray-50 h-12 px-6 rounded-2xl border border-gray-100 font-semibold text-sm"
             >
               <Scan className="w-4 h-4 mr-2" />
-              Quick Scan
+              {t("pages.dashboard.quickScan", "Quick Scan")}
             </Button>
             <Button
               onClick={() => navigate("/pantry")}
               className="bg-white text-[#1a2332] shadow-xl hover:bg-gray-50 h-12 px-6 rounded-2xl border border-gray-100 font-semibold text-sm"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Item
+              {t("pages.dashboard.addItem", "Add Item")}
             </Button>
           </motion.div>
         )}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useFoodMood } from '../context/FoodMoodContext';
 import { api, RecipeFeedbackAction } from '../../lib/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -9,9 +9,11 @@ import { toast } from 'sonner';
 import { formatPersonalRankLabel, personalRankPercent } from '../../lib/mlFormat';
 import { Sidebar } from "../components/Sidebar";
 import { BottomNav } from "../components/BottomNav";
+import { useLanguage } from "../context/LanguageContext";
 
 export function Recipes() {
   const { recipes, recommendationsInfo, useRecipe, setRecipePreference } = useFoodMood();
+  const { t } = useLanguage();
   const [selectedRecipe, setSelectedRecipe] = useState<(typeof recipes)[0] | null>(null);
   const [cookingRecipe, setCookingRecipe] = useState<string | null>(null);
 
@@ -49,10 +51,10 @@ export function Recipes() {
     try {
       await useRecipe(recipe.id);
       await sendFeedback(recipe, 'cooked');
-      toast.success(`You cooked ${recipe.name}! Ingredients consumed.`);
+      toast.success(`${recipe.name}: ${t("pages.recipes.cookedToast", "Ingredients consumed.")}`);
       setSelectedRecipe(null);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to use recipe');
+      toast.error(err.message || t("pages.recipes.useFailed", "Failed to use recipe"));
     } finally {
       setCookingRecipe(null);
     }
@@ -67,12 +69,12 @@ export function Recipes() {
     const next = recipe.userPreference === 'liked' ? null : 'liked';
     try {
       await setRecipePreference(recipe.id, next);
-      toast.success(next === 'liked' ? 'Saved to your likes' : 'Removed from likes');
+      toast.success(next === 'liked' ? t("pages.recipes.savedToLikes", "Saved to your likes") : t("pages.recipes.removedFromLikes", "Removed from likes"));
       if (selectedRecipe?.id === recipe.id) {
         setSelectedRecipe({ ...recipe, userPreference: next ?? undefined });
       }
     } catch {
-      toast.error('Could not save preference');
+      toast.error(t("pages.recipes.preferenceFailed", "Could not save preference"));
     }
   };
 
@@ -81,14 +83,14 @@ export function Recipes() {
     const next = recipe.userPreference === 'disliked' ? null : 'disliked';
     try {
       await setRecipePreference(recipe.id, next);
-      toast.message(next === 'disliked' ? 'We will show fewer recipes like this' : 'Preference cleared');
+      toast.message(next === 'disliked' ? t("pages.recipes.fewerLikeThis", "We will show fewer recipes like this") : t("pages.recipes.preferenceCleared", "Preference cleared"));
       if (selectedRecipe?.id === recipe.id && next === 'disliked') {
         setSelectedRecipe(null);
       } else if (selectedRecipe?.id === recipe.id) {
         setSelectedRecipe({ ...recipe, userPreference: next ?? undefined });
       }
     } catch {
-      toast.error('Could not save preference');
+      toast.error(t("pages.recipes.preferenceFailed", "Could not save preference"));
     }
   };
 
@@ -108,7 +110,7 @@ export function Recipes() {
       return (
         <Badge className="bg-rose-100 text-rose-700 border-rose-200 text-xs">
           <Heart className="w-3 h-3 mr-1 fill-current" />
-          Liked
+          {t("pages.recipes.liked", "Liked")}
         </Badge>
       );
     }
@@ -116,7 +118,7 @@ export function Recipes() {
       return (
         <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-xs">
           <ThumbsDown className="w-3 h-3 mr-1" />
-          Not for me
+          {t("pages.recipes.notForMe", "Not for me")}
         </Badge>
       );
     }
@@ -131,12 +133,12 @@ export function Recipes() {
         <div className="max-w-7xl mx-auto p-6 space-y-6">
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold tracking-tight text-[#2D3748]">
-              {isML ? 'Smart Recipe Hub' : 'Recipe Hub'}
+              {isML ? t("pages.recipes.titleSmart") : t("pages.recipes.title")}
             </h1>
             <p className="text-[#718096]">
               {isML && personalizationApplied
-                ? 'Like or dismiss recipes — the AI learns your taste'
-                : 'Recipes matched to your pantry to help reduce waste'}
+                ? t("pages.recipes.subtitleAi", "Like or dismiss recipes — the AI learns your taste")
+                : t("pages.recipes.subtitle", "Recipes matched to your pantry to help reduce waste")}
             </p>
 
             {isML && !personalizationApplied && (
@@ -145,7 +147,7 @@ export function Recipes() {
                 <span>
                   {meta?.personalizationDisabledReason
                     ? meta.personalizationDisabledReason
-                    : 'Personalization warming up — keep liking recipes to train the model'}
+                    : t("pages.recipes.warmingUp", "Personalization warming up — keep liking recipes to train the model")}
                 </span>
               </div>
             )}
@@ -173,7 +175,7 @@ export function Recipes() {
                   <div className="absolute top-2 left-2 flex gap-1">
                     <button
                       type="button"
-                      aria-label={recipe.userPreference === 'liked' ? 'Unlike' : 'Like recipe'}
+                      aria-label={recipe.userPreference === 'liked' ? t("pages.recipes.unlike", "Unlike") : t("pages.recipes.likeRecipe", "Like recipe")}
                       onClick={(e) => toggleLike(recipe, e)}
                       className={`p-2 rounded-full shadow-md transition-colors ${
                         recipe.userPreference === 'liked'
@@ -187,7 +189,7 @@ export function Recipes() {
                     </button>
                     <button
                       type="button"
-                      aria-label="Not for me"
+                      aria-label={t("pages.recipes.notForMe", "Not for me")}
                       onClick={(e) => markDisliked(recipe, e)}
                       className={`p-2 rounded-full shadow-md transition-colors ${
                         recipe.userPreference === 'disliked'
@@ -200,19 +202,19 @@ export function Recipes() {
                   </div>
                   <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
                     <Badge className="bg-[#B2D2A4] text-[#2D3748] hover:bg-[#B2D2A4]">
-                      {recipe.matchPercentage}% Match
+                      {recipe.matchPercentage}% {t("pages.recipes.match", "Match")}
                     </Badge>
                     <PreferenceBadge pref={recipe.userPreference} />
                     {isML && personalizationApplied && (
                       <Badge variant="outline" className="bg-white/90 text-emerald-700 border-emerald-200 text-xs">
                         <Sparkles className="w-3 h-3 mr-1" />
-                        Personalized
+                        {t("pages.recipes.personalized", "Personalized")}
                       </Badge>
                     )}
                     {personalRankPercent(recipe.personalRank) != null && (
                       <Badge variant="outline" className="bg-white/90 text-indigo-600 border-indigo-200 text-xs">
                         <Star className="w-3 h-3 mr-1" />
-                        Relevance {formatPersonalRankLabel(recipe.personalRank)}
+                        {t("pages.recipes.relevance", "Relevance")} {formatPersonalRankLabel(recipe.personalRank)}
                       </Badge>
                     )}
                   </div>
@@ -226,8 +228,8 @@ export function Recipes() {
                 )}
                 <h3 className="font-semibold text-[#2D3748] mb-1">{recipe.name}</h3>
                 <div className="flex items-center gap-3 text-sm text-[#718096]">
-                  <span>⏱ {recipe.cookingTime} min</span>
-                  <span>🍽 {recipe.servings} servings</span>
+                  <span>⏱ {recipe.cookingTime} {t("pages.recipes.min", "min")}</span>
+                  <span>{recipe.servings} {t("pages.recipes.servings", "servings")}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {recipe.ingredients.slice(0, 3).map((ingredient, i) => (
@@ -245,7 +247,7 @@ export function Recipes() {
                   ))}
                   {recipe.ingredients.length > 3 && (
                     <span className="text-xs px-2 py-1 rounded-full bg-[#E2E8F0] text-[#718096]">
-                      +{recipe.ingredients.length - 3} more
+                      +{recipe.ingredients.length - 3} {t("pages.recipes.more", "more")}
                     </span>
                   )}
                 </div>
@@ -262,7 +264,7 @@ export function Recipes() {
                   {isML && personalizationApplied && (
                     <Badge variant="outline" className="text-emerald-700 border-emerald-200">
                       <Sparkles className="w-3 h-3 mr-1" />
-                      Personalized Pick
+                      {t("pages.recipes.personalizedPick", "Personalized Pick")}
                     </Badge>
                   )}
                 </DialogTitle>
@@ -277,12 +279,12 @@ export function Recipes() {
                     />
                     <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
                       <Badge className="bg-[#B2D2A4] text-[#2D3748]">
-                        {selectedRecipe.matchPercentage}% Match
+                          {selectedRecipe.matchPercentage}% {t("pages.recipes.match", "Match")}
                       </Badge>
                       {personalRankPercent(selectedRecipe.personalRank) != null && (
                         <Badge variant="outline" className="bg-white/90 text-indigo-600 border-indigo-200">
                           <Star className="w-3 h-3 mr-1" />
-                          Relevance for you: {formatPersonalRankLabel(selectedRecipe.personalRank)}
+                          {t("pages.recipes.relevanceForYou", "Relevance for you:")} {formatPersonalRankLabel(selectedRecipe.personalRank)}
                         </Badge>
                       )}
                     </div>
@@ -291,13 +293,13 @@ export function Recipes() {
                   {isML && selectedRecipe.mlInsight && (
                     <div className="mb-4 px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-lg text-sm text-indigo-800 font-medium flex items-center gap-2 shadow-sm">
                       <Sparkles className="w-5 h-5 text-indigo-500" />
-                      <span><strong>ML Insight:</strong> {selectedRecipe.mlInsight}</span>
+                      <span><strong>{t("pages.recipes.mlInsight", "ML Insight:")}</strong> {selectedRecipe.mlInsight}</span>
                     </div>
                   )}
 
                   <div className="flex items-center gap-4 text-sm text-[#718096] mb-4">
-                    <span>⏱ {selectedRecipe.cookingTime} minutes</span>
-                    <span>🍽 {selectedRecipe.servings} servings</span>
+                    <span>⏱ {selectedRecipe.cookingTime} {t("pages.recipes.minutes", "minutes")}</span>
+                    <span>{selectedRecipe.servings} {t("pages.recipes.servings", "servings")}</span>
                   </div>
 
                   <div className="flex gap-2 mb-4">
@@ -313,7 +315,7 @@ export function Recipes() {
                       <Heart
                         className={`w-4 h-4 mr-2 ${selectedRecipe.userPreference === 'liked' ? 'fill-current' : ''}`}
                       />
-                      {selectedRecipe.userPreference === 'liked' ? 'Liked' : 'Like'}
+                      {selectedRecipe.userPreference === 'liked' ? t("pages.recipes.liked", "Liked") : t("pages.recipes.like", "Like")}
                     </Button>
                     <Button
                       variant="outline"
@@ -325,12 +327,12 @@ export function Recipes() {
                       }
                     >
                       <ThumbsDown className="w-4 h-4 mr-2" />
-                      Not for me
+                      {t("pages.recipes.notForMe", "Not for me")}
                     </Button>
                   </div>
 
                   <div className="mb-4">
-                    <h3 className="font-semibold text-[#2D3748] mb-2">Ingredients</h3>
+                    <h3 className="font-semibold text-[#2D3748] mb-2">{t("pages.recipes.ingredients", "Ingredients")}</h3>
                     <div className="space-y-2">
                       {selectedRecipe.ingredients.map((ingredient, index) => (
                         <div
@@ -350,7 +352,7 @@ export function Recipes() {
                           <span className="text-sm text-[#718096]">{ingredient.amount}</span>
                           {!ingredient.inPantry && (
                             <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
-                              Missing
+                              {t("pages.recipes.missing", "Missing")}
                             </span>
                           )}
                         </div>
@@ -359,7 +361,7 @@ export function Recipes() {
                   </div>
 
                   <div className="mb-4">
-                    <h3 className="font-semibold text-[#2D3748] mb-2">Instructions</h3>
+                    <h3 className="font-semibold text-[#2D3748] mb-2">{t("pages.recipes.instructions", "Instructions")}</h3>
                     <ol className="space-y-2">
                       {selectedRecipe.instructions.map((instruction, index) => (
                         <li key={index} className="flex gap-3">
@@ -379,11 +381,11 @@ export function Recipes() {
                       className="flex-1 bg-[#B2D2A4] hover:bg-[#9BC08A] text-[#2D3748]"
                     >
                       <ChefHat className="w-4 h-4 mr-2" />
-                      {cookingRecipe === selectedRecipe.id ? 'Cooking...' : 'I Cooked This!'}
+                      {cookingRecipe === selectedRecipe.id ? t("pages.recipes.cooking", "Cooking...") : t("pages.recipes.cooked", "I Cooked This!")}
                     </Button>
                     <Button variant="outline" onClick={handleCloseModal} className="border-[#E2E8F0]">
                       <X className="w-4 h-4 mr-2" />
-                      Close
+                      {t("pages.recipes.close", "Close")}
                     </Button>
                   </div>
                 </>
