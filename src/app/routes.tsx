@@ -14,6 +14,7 @@ import { Profile } from "./pages/Profile";
 import { Analytics } from "./pages/Analytics";
 import { ShareFood } from "./pages/ShareFood";
 import { Notifications } from "./pages/Notifications";
+import { AdminDashboard } from "./pages/AdminDashboard";
 import { NotFound } from "./pages/NotFound";
 
 export const router = createBrowserRouter([
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
       { path: "analytics", Component: Analytics },
       { path: "share-food", Component: ShareFood },
       { path: "notifications", Component: Notifications },
+      { path: "admin", Component: AdminDashboard },
       { path: "*", Component: NotFound },
     ],
   },

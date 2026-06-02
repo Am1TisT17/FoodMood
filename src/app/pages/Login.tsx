@@ -13,6 +13,8 @@ import { useLanguage } from "../context/LanguageContext";
 // Google buttons the screen has. The script exposes `window.google.accounts.id`.
 const GOOGLE_GSI_SRC = "https://accounts.google.com/gsi/client";
 const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "";
+const DEMO_ADMIN_EMAIL = "admin@foodmood.local";
+const DEMO_ADMIN_PASSWORD = "admin12345";
 
 declare global {
   interface Window {
@@ -97,7 +99,7 @@ export function Login() {
             try {
               const r = await api.googleSignIn(response.credential);
               toast.success(`Welcome, ${r.user.name}!`);
-              navigate("/dashboard");
+              navigate(r.user.role === "admin" ? "/admin" : "/dashboard");
             } catch (err: any) {
               toast.error(err?.message || "Google sign-in failed on the server");
             } finally {
@@ -134,11 +136,24 @@ export function Login() {
     toast.error("Please fill in all fields");
     return;
   }
+  if (
+    loginEmail.trim().toLowerCase() === DEMO_ADMIN_EMAIL &&
+    loginPassword === DEMO_ADMIN_PASSWORD
+  ) {
+    localStorage.setItem("foodmood_token", "demo-admin-token");
+    localStorage.setItem("foodmood_demo_admin", "true");
+    localStorage.setItem("foodmood_demo_admin_name", "Demo Admin");
+    toast.success("Demo admin mode enabled");
+    navigate("/admin");
+    return;
+  }
   setLoginLoading(true);
   try {
-    await api.login({ email: loginEmail, password: loginPassword });
+    localStorage.removeItem("foodmood_demo_admin");
+    localStorage.removeItem("foodmood_demo_admin_name");
+    const r = await api.login({ email: loginEmail, password: loginPassword });
     toast.success("Welcome back to FoodMood!");
-    navigate("/dashboard");
+    navigate(r.user.role === "admin" ? "/admin" : "/dashboard");
   } catch (err: any) {
     toast.error(err.message || "Login failed");
   } finally {

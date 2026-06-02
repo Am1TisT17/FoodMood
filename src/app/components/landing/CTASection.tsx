@@ -1,18 +1,20 @@
-import { motion } from "motion/react";
-import { ArrowRight, Leaf, Scan, ChefHat, Users } from "lucide-react";
 import { useNavigate } from "react-router";
+import { motion } from "motion/react";
+import { ArrowRight, ChefHat, Leaf, Scan, Users } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
-const FOOD_IMG = "https://images.unsplash.com/photo-1567137827022-fbe18eff7275?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMHZlZ2V0YWJsZXMlMjBjb2xvcmZ1bCUyMGZvb2QlMjBraXRjaGVufGVufDF8fHx8MTc3NDAwOTY3NXww&ixlib=rb-4.1.0&q=80&w=1080";
+const FOOD_IMG = "https://images.unsplash.com/photo-1567137827022-fbe18eff7275?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080";
+
+const steps = [
+  { icon: Scan, key: "scan" },
+  { icon: ChefHat, key: "cook" },
+  { icon: Users, key: "share" },
+  { icon: Leaf, key: "track" },
+];
 
 export function CTASection() {
   const navigate = useNavigate();
-
-  const steps = [
-    { icon: Scan, text: "Scan your receipts" },
-    { icon: ChefHat, text: "Cook from pantry" },
-    { icon: Users, text: "Share with community" },
-    { icon: Leaf, text: "Track your impact" },
-  ];
+  const { t } = useLanguage();
 
   return (
     <section className="py-32 bg-white overflow-hidden">
@@ -23,60 +25,48 @@ export function CTASection() {
           viewport={{ once: true }}
           className="relative rounded-[40px] overflow-hidden"
         >
-          {/* Background */}
           <div className="absolute inset-0">
-            <img src={FOOD_IMG} alt="Fresh food" className="w-full h-full object-cover" />
+            <img src={FOOD_IMG} alt={t("landing.cta.imageAlt")} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#1a2332]/97 via-[#1a2332]/90 to-[#1a2332]/70" />
           </div>
 
-          {/* Decorative blobs */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-[#B2D2A4]/15 blur-3xl rounded-full -translate-y-1/2 translate-x-1/4" />
-          <div className="absolute bottom-0 right-1/3 w-64 h-64 bg-[#B2D2A4]/10 blur-3xl rounded-full translate-y-1/2" />
-
-          {/* Content */}
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center p-12 md:p-16 lg:p-20">
             <div>
               <div className="flex items-center gap-2 mb-6">
                 <div className="w-8 h-8 rounded-xl bg-[#B2D2A4] flex items-center justify-center">
                   <Leaf className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-[#B2D2A4] font-semibold text-sm">FoodMood — Start Today</span>
+                <span className="text-[#B2D2A4] font-semibold text-sm">{t("landing.cta.eyebrow")}</span>
               </div>
 
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 leading-tight">
-                Ready to transform how you manage food?
+                {t("landing.cta.title")}
               </h2>
-              <p className="text-white/60 text-lg leading-relaxed mb-10">
-                Join 48,200+ households already saving money, reducing waste, and
-                living more sustainably. Free to start. No credit card required.
-              </p>
+              <p className="text-white/60 text-lg leading-relaxed mb-10">{t("landing.cta.subtitle")}</p>
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => navigate("/login")}
                   className="group flex items-center justify-center gap-2.5 px-8 py-4 bg-[#B2D2A4] hover:bg-[#9BC18A] text-[#1a2332] rounded-2xl font-bold text-lg transition-all shadow-xl shadow-[#B2D2A4]/30 hover:shadow-2xl hover:-translate-y-0.5"
                 >
-                  Get Started Free
+                  {t("landing.cta.primary")}
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
                 <button
                   onClick={() => navigate("/dashboard")}
                   className="flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-semibold text-lg border border-white/20 transition-all"
                 >
-                  View Demo
+                  {t("landing.cta.secondary")}
                 </button>
               </div>
 
-              <p className="text-white/30 text-sm mt-5">
-                ✓ Free forever plan · ✓ No credit card · ✓ Cancel anytime
-              </p>
+              <p className="text-white/30 text-sm mt-5">{t("landing.cta.note")}</p>
             </div>
 
-            {/* Right: Steps */}
             <div className="grid grid-cols-2 gap-4">
               {steps.map((step, i) => (
                 <motion.div
-                  key={i}
+                  key={step.key}
                   initial={{ opacity: 0, scale: 0.9 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
@@ -87,7 +77,7 @@ export function CTASection() {
                   <div className="w-12 h-12 rounded-2xl bg-[#B2D2A4]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <step.icon className="w-6 h-6 text-[#B2D2A4]" />
                   </div>
-                  <p className="text-white font-semibold">{step.text}</p>
+                  <p className="text-white font-semibold">{t(`landing.cta.steps.${step.key}`)}</p>
                 </motion.div>
               ))}
             </div>

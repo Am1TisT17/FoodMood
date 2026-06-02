@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { Leaf } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
 const brands = [
   { name: "EcoLife", color: "#B2D2A4" },
@@ -13,11 +14,19 @@ const brands = [
 ];
 
 export function SocialProofBar() {
+  const { t } = useLanguage();
+  const stats = [
+    { value: "48,200+", labelKey: "activeUsers" },
+    { value: "12.7 tons", labelKey: "foodSaved" },
+    { value: "$2.1M+", labelKey: "communitySavings" },
+    { value: "4.9 / 5.0", labelKey: "averageRating" },
+  ];
+
   return (
     <section className="py-16 border-y border-gray-100 bg-gray-50/60 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 mb-10 text-center">
         <p className="text-sm font-semibold text-[#4A5568]/50 uppercase tracking-widest">
-          Trusted by eco-conscious communities and organizations
+          {t("landing.socialProof.trusted")}
         </p>
       </div>
 
@@ -60,12 +69,7 @@ export function SocialProofBar() {
 
       {/* Key numbers */}
       <div className="max-w-5xl mx-auto px-6 mt-14 grid grid-cols-2 md:grid-cols-4 gap-8">
-        {[
-          { value: "48,200+", label: "Active Users" },
-          { value: "12.7 tons", label: "Food Saved" },
-          { value: "$2.1M+", label: "Community Savings" },
-          { value: "4.9 / 5.0", label: "Average Rating" },
-        ].map((stat, i) => (
+        {stats.map((stat, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
@@ -75,7 +79,7 @@ export function SocialProofBar() {
             className="text-center"
           >
             <div className="text-3xl font-black text-[#1a2332] mb-1">{stat.value}</div>
-            <div className="text-sm text-[#4A5568]/60 font-medium">{stat.label}</div>
+            <div className="text-sm text-[#4A5568]/60 font-medium">{t(`landing.socialProof.stats.${stat.labelKey}`)}</div>
           </motion.div>
         ))}
       </div>
