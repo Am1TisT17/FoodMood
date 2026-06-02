@@ -2,48 +2,24 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "motion/react";
 import {
-  Activity,
-  AlertCircle,
   Bell,
-  CheckCircle2,
   ChevronDown,
   Circle,
   Globe,
   LayoutDashboard,
   Leaf,
+  Mail,
   MoreHorizontal,
+  Save,
   Scan,
-  ScrollText,
   Search,
-  ShoppingBag,
+  ShieldCheck,
   TrendingUp,
   User,
   Users,
-  XCircle,
 } from "lucide-react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { api, auth, UserDTO } from "../../lib/api";
 import { useLanguage } from "../context/LanguageContext";
-
-const apiData = [
-  { time: "00:00", ocr: 42, recipe: 18 },
-  { time: "03:00", ocr: 28, recipe: 11 },
-  { time: "06:00", ocr: 61, recipe: 33 },
-  { time: "09:00", ocr: 145, recipe: 78 },
-  { time: "12:00", ocr: 198, recipe: 112 },
-  { time: "15:00", ocr: 174, recipe: 95 },
-  { time: "18:00", ocr: 230, recipe: 143 },
-  { time: "21:00", ocr: 117, recipe: 67 },
-  { time: "Now", ocr: 89, recipe: 52 },
-];
 
 const users = [
   { id: "USR-0041", name: "Sarah Chen", email: "sarah.c@email.com", registered: "2024-01-12", status: "active", scans: 47 },
@@ -54,18 +30,9 @@ const users = [
   { id: "USR-0046", name: "Lena Muller", email: "lena.m@email.com", registered: "2024-04-02", status: "inactive", scans: 6 },
 ];
 
-const listings = [
-  { id: 1, name: "Organic Bananas", donor: "Sarah C.", category: "Fruit", expires: "2026-06-05", qty: "8 pcs", img: "BN", submitted: "2 hrs ago" },
-  { id: 2, name: "Sourdough Bread", donor: "Jonas W.", category: "Bakery", expires: "2026-06-04", qty: "1 loaf", img: "BR", submitted: "4 hrs ago" },
-  { id: 3, name: "Greek Yogurt", donor: "Priya P.", category: "Dairy", expires: "2026-06-07", qty: "500g", img: "YG", submitted: "6 hrs ago" },
-  { id: 4, name: "Cherry Tomatoes", donor: "Amara O.", category: "Vegetable", expires: "2026-06-06", qty: "250g", img: "TM", submitted: "8 hrs ago" },
-  { id: 5, name: "Avocados", donor: "Marcus R.", category: "Fruit", expires: "2026-06-05", qty: "3 pcs", img: "AV", submitted: "12 hrs ago" },
-  { id: 6, name: "Fresh Pasta", donor: "Lena M.", category: "Grain", expires: "2026-06-08", qty: "400g", img: "PA", submitted: "1 day ago" },
-];
-
 const kpis = [
   { labelKey: "kpiUsersOnline", sublabelKey: "kpiUsersOnlineSub", value: "3,842", icon: Globe, iconBg: "bg-[#B2D2A4]/15", iconColor: "text-[#B2D2A4]", trend: "up" },
-  { labelKey: "kpiActiveListings", sublabelKey: "kpiActiveListingsSub", value: "1,249", icon: ShoppingBag, iconBg: "bg-blue-50", iconColor: "text-blue-500", trend: "up" },
+  { labelKey: "kpiTotalUsers", sublabelKey: "kpiTotalUsersSub", value: "48,200", icon: Users, iconBg: "bg-blue-50", iconColor: "text-blue-500", trend: "up" },
   { labelKey: "kpiScansToday", sublabelKey: "kpiScansTodaySub", value: "8,730", icon: Scan, iconBg: "bg-amber-50", iconColor: "text-amber-500", trend: "up" },
   { labelKey: "kpiCo2Saved", sublabelKey: "kpiCo2SavedSub", value: "12,490", icon: Leaf, iconBg: "bg-emerald-50", iconColor: "text-emerald-500", trend: "neutral" },
 ];
@@ -73,11 +40,10 @@ const kpis = [
 const navItems = [
   { icon: LayoutDashboard, key: "dashboardOverview" },
   { icon: Users, key: "userManagement" },
-  { icon: ShoppingBag, key: "marketplaceModeration" },
-  { icon: Activity, key: "systemHealth" },
   { icon: User, key: "profileSettings" },
 ];
 
+type AdminNavKey = "dashboardOverview" | "userManagement" | "profileSettings";
 type Translate = (key: string, fallback?: string) => string;
 
 function initials(name: string) {
@@ -89,7 +55,7 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function AdminSidebar({ activeNav, setActiveNav, t }: { activeNav: string; setActiveNav: (s: string) => void; t: Translate }) {
+function AdminSidebar({ activeNav, setActiveNav, t }: { activeNav: AdminNavKey; setActiveNav: (s: AdminNavKey) => void; t: Translate }) {
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#1a2332] flex flex-col z-40">
       <div className="h-16 flex items-center px-6 border-b border-white/8">
@@ -111,7 +77,7 @@ function AdminSidebar({ activeNav, setActiveNav, t }: { activeNav: string; setAc
         {navItems.map((item) => (
           <button
             key={item.key}
-            onClick={() => setActiveNav(item.key)}
+            onClick={() => setActiveNav(item.key as AdminNavKey)}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left ${
               activeNav === item.key ? "bg-[#B2D2A4]/15 text-[#B2D2A4]" : "text-white/50 hover:text-white/80 hover:bg-white/5"
             }`}
@@ -123,28 +89,13 @@ function AdminSidebar({ activeNav, setActiveNav, t }: { activeNav: string; setAc
         ))}
       </nav>
 
-      <div className="px-3 pb-4 border-t border-white/8 pt-4">
-        <div className="px-3 mb-3">
-          <span className="text-white/30 text-xs font-semibold tracking-widest uppercase">{t("pages.admin.system")}</span>
-        </div>
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/50 hover:text-white/80 hover:bg-white/5 transition-all duration-200 text-left">
-          <ScrollText className="w-4 h-4 flex-shrink-0" />
-          <span className="text-sm font-medium">{t("pages.admin.systemLogs")}</span>
-        </button>
-        <div className="mt-3 mx-1 p-3 bg-white/5 rounded-xl">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-white/40 text-xs font-medium">{t("pages.admin.systemStatus")}</span>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-emerald-400 text-xs font-medium">{t("pages.admin.operational")}</span>
-            </div>
+      <div className="px-4 pb-5">
+        <div className="rounded-2xl bg-white/5 border border-white/8 p-4">
+          <div className="flex items-center gap-2 text-[#B2D2A4] text-xs font-semibold mb-2">
+            <ShieldCheck className="w-4 h-4" />
+            {t("pages.admin.secureArea")}
           </div>
-          {["OCR API", "Recipe API", "Auth Service"].map((svc) => (
-            <div key={svc} className="flex items-center justify-between">
-              <span className="text-white/30 text-xs">{svc}</span>
-              <span className="text-white/25 text-xs">99.9%</span>
-            </div>
-          ))}
+          <p className="text-white/35 text-xs leading-relaxed">{t("pages.admin.secureAreaText")}</p>
         </div>
       </div>
     </aside>
@@ -153,7 +104,7 @@ function AdminSidebar({ activeNav, setActiveNav, t }: { activeNav: string; setAc
 
 function KPICards({ t }: { t: Translate }) {
   return (
-    <div className="grid grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+    <div className="grid grid-cols-2 xl:grid-cols-4 gap-5">
       {kpis.map((kpi, i) => (
         <motion.div
           key={kpi.labelKey}
@@ -182,12 +133,79 @@ function KPICards({ t }: { t: Translate }) {
   );
 }
 
-function UserTable({ t }: { t: Translate }) {
+function DashboardOverview({ t, setActiveNav }: { t: Translate; setActiveNav: (s: AdminNavKey) => void }) {
+  const statusCounts = {
+    active: users.filter((user) => user.status === "active").length,
+    inactive: users.filter((user) => user.status === "inactive").length,
+    banned: users.filter((user) => user.status === "banned").length,
+  };
+
+  return (
+    <div className="space-y-8">
+      <KPICards t={t} />
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
+        <section className="bg-white rounded-[20px] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] overflow-hidden">
+          <div className="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-[#1a2332]">{t("pages.admin.recentUsers")}</h2>
+              <p className="text-xs text-[#4A5568]/50 mt-0.5">{t("pages.admin.recentUsersText")}</p>
+            </div>
+            <button
+              onClick={() => setActiveNav("userManagement")}
+              className="px-3.5 py-2 text-sm rounded-xl border border-gray-200 text-[#4A5568]/70 hover:border-[#B2D2A4] transition-colors"
+            >
+              {t("pages.admin.openUsers")}
+            </button>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {users.slice(0, 4).map((user) => (
+              <div key={user.id} className="px-7 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#B2D2A4]/20 flex items-center justify-center text-[#B2D2A4] text-xs font-bold">
+                    {initials(user.name)}
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-[#1a2332]">{user.name}</div>
+                    <div className="text-xs text-[#4A5568]/40">{user.email}</div>
+                  </div>
+                </div>
+                <span className="text-xs font-mono text-[#4A5568]/40">{user.id}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-white rounded-[20px] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-7">
+          <h2 className="font-bold text-[#1a2332] mb-2">{t("pages.admin.userStatusTitle")}</h2>
+          <p className="text-xs text-[#4A5568]/50 mb-6">{t("pages.admin.userStatusText")}</p>
+          <div className="space-y-4">
+            {(["active", "inactive", "banned"] as const).map((status) => (
+              <div key={status}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-semibold text-[#4A5568]">{t(`pages.admin.statuses.${status}`)}</span>
+                  <span className="text-sm font-bold text-[#1a2332]">{statusCounts[status]}</span>
+                </div>
+                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${status === "active" ? "bg-emerald-400" : status === "inactive" ? "bg-gray-400" : "bg-red-400"}`}
+                    style={{ width: `${(statusCounts[status] / users.length) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function UserManagementPage({ t }: { t: Translate }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const headers = ["userId", "name", "registrationDate", "ocrScans", "status", "actions"];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[20px] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] mb-8 overflow-hidden">
+    <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[20px] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] overflow-hidden">
       <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100">
         <div>
           <h2 className="font-bold text-[#1a2332]">{t("pages.admin.userManagement")}</h2>
@@ -260,146 +278,72 @@ function UserTable({ t }: { t: Translate }) {
           </tbody>
         </table>
       </div>
-    </motion.div>
+    </motion.section>
   );
 }
 
-function ModerationQueue({ t }: { t: Translate }) {
-  const [approved, setApproved] = useState<number[]>([]);
-  const [rejected, setRejected] = useState<number[]>([]);
-
+function ProfileSettingsPage({ adminUser, t }: { adminUser: UserDTO | null; t: Translate }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[20px] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] mb-8">
-      <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100">
-        <div>
-          <h2 className="font-bold text-[#1a2332]">{t("pages.admin.moderationQueue")}</h2>
-          <p className="text-xs text-[#4A5568]/50 mt-0.5">{t("pages.admin.pendingReview").replace("{count}", String(listings.length - approved.length - rejected.length))}</p>
+    <div className="grid grid-cols-1 xl:grid-cols-[1fr_0.8fr] gap-6">
+      <section className="bg-white rounded-[20px] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-7">
+        <div className="mb-7">
+          <h2 className="font-bold text-[#1a2332]">{t("pages.admin.profileSettingsTitle")}</h2>
+          <p className="text-xs text-[#4A5568]/50 mt-0.5">{t("pages.admin.profileSettingsText")}</p>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-full">
-          <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-          <span className="text-xs font-semibold text-amber-600">{t("pages.admin.needsReview")}</span>
-        </div>
-      </div>
-
-      <div className="p-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-        {listings.map((listing, i) => {
-          const isApproved = approved.includes(listing.id);
-          const isRejected = rejected.includes(listing.id);
-          const isDone = isApproved || isRejected;
-
-          return (
-            <motion.div key={listing.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.04 }} className={`border rounded-[18px] p-5 transition-all duration-300 ${
-              isApproved ? "border-emerald-200 bg-emerald-50/50" : isRejected ? "border-red-100 bg-red-50/30 opacity-60" : "border-gray-100 hover:border-gray-200 hover:shadow-md"
-            }`}>
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-14 h-14 rounded-[14px] bg-[#fafbfc] border border-gray-100 flex items-center justify-center text-sm font-black text-[#B2D2A4]">{listing.img}</div>
-                <div className="text-right">
-                  <span className="text-xs text-[#4A5568]/40">{listing.submitted}</span>
-                  {isDone && (
-                    <div className="mt-1">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isApproved ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-500"}`}>
-                        {isApproved ? t("pages.admin.approved") : t("pages.admin.rejected")}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mb-1 font-bold text-[#1a2332] text-sm">{listing.name}</div>
-              <div className="text-xs text-[#4A5568]/50 mb-0.5">{listing.qty} · {listing.category}</div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="w-6 h-6 rounded-full bg-[#B2D2A4]/20 flex items-center justify-center text-xs font-bold text-[#B2D2A4]">{listing.donor[0]}</div>
-                  <span className="text-xs text-[#4A5568]/50">{listing.donor}</span>
-                </div>
-                <div className="mt-2 text-xs text-red-400 font-medium">{t("pages.admin.exp")}: {listing.expires}</div>
-              </div>
-
-              {!isDone ? (
-                <div className="flex gap-2">
-                  <button onClick={() => setApproved((p) => [...p, listing.id])} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-[#B2D2A4] text-[#B2D2A4] text-xs font-bold hover:bg-[#B2D2A4]/10 transition-colors">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {t("pages.admin.approve")}
-                  </button>
-                  <button onClick={() => setRejected((p) => [...p, listing.id])} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-red-400 text-xs font-semibold hover:bg-red-50 transition-colors border border-red-100">
-                    <XCircle className="w-3.5 h-3.5" /> {t("pages.admin.reject")}
-                  </button>
-                </div>
-              ) : (
-                <button onClick={() => { setApproved((p) => p.filter((id) => id !== listing.id)); setRejected((p) => p.filter((id) => id !== listing.id)); }} className="w-full py-2 rounded-xl text-[#4A5568]/40 text-xs font-medium hover:bg-gray-50 transition-colors border border-gray-100">
-                  {t("pages.admin.undo")}
-                </button>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
-    </motion.div>
-  );
-}
-
-function SystemMetrics({ t }: { t: Translate }) {
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[20px] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-      <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100">
-        <div>
-          <h2 className="font-bold text-[#1a2332]">{t("pages.admin.systemMetrics")}</h2>
-          <p className="text-xs text-[#4A5568]/50 mt-0.5">{t("pages.admin.requestsLast24h")}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          {["OCR API", "Recipe API"].map((label, index) => (
-            <div key={label} className="flex items-center gap-1.5">
-              <div className={`w-3 h-3 rounded-full ${index === 0 ? "bg-[#B2D2A4]" : "bg-[#4A5568]"}`} />
-              <span className="text-xs text-[#4A5568]/60 font-medium">{label}</span>
+        <div className="space-y-5">
+          <label className="block">
+            <span className="text-sm font-semibold text-[#4A5568]">{t("pages.admin.profileName")}</span>
+            <div className="mt-2 relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4A5568]/35" />
+              <input value={adminUser?.name || "Admin"} readOnly className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-[#f8fafb] text-sm text-[#1a2332] outline-none" />
             </div>
-          ))}
+          </label>
+          <label className="block">
+            <span className="text-sm font-semibold text-[#4A5568]">{t("pages.admin.profileEmail")}</span>
+            <div className="mt-2 relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4A5568]/35" />
+              <input value={adminUser?.email || "admin@foodmood.local"} readOnly className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-[#f8fafb] text-sm text-[#1a2332] outline-none" />
+            </div>
+          </label>
+          <label className="block">
+            <span className="text-sm font-semibold text-[#4A5568]">{t("pages.admin.profileRole")}</span>
+            <div className="mt-2 relative">
+              <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4A5568]/35" />
+              <input value={t("pages.admin.superAdmin")} readOnly className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-[#f8fafb] text-sm text-[#1a2332] outline-none" />
+            </div>
+          </label>
+          <button className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#B2D2A4] text-[#1a2332] text-sm font-bold hover:bg-[#9BC18A] transition-colors">
+            <Save className="w-4 h-4" />
+            {t("pages.admin.saveProfile")}
+          </button>
         </div>
-      </div>
-      <div className="p-6">
-        <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={apiData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-            <XAxis dataKey="time" stroke="#9ca3af" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-            <YAxis stroke="#9ca3af" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} width={35} />
-            <Tooltip contentStyle={{ backgroundColor: "white", border: "none", borderRadius: "16px", boxShadow: "0 4px 24px rgba(0,0,0,0.1)", fontSize: "12px" }} labelStyle={{ color: "#1a2332", fontWeight: 700, marginBottom: 4 }} />
-            <Line type="monotone" dataKey="ocr" name="OCR API" stroke="#B2D2A4" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: "#B2D2A4", strokeWidth: 2, stroke: "white" }} />
-            <Line type="monotone" dataKey="recipe" name="Recipe API" stroke="#4A5568" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: "#4A5568", strokeWidth: 2, stroke: "white" }} strokeDasharray="5 3" />
-          </LineChart>
-        </ResponsiveContainer>
+      </section>
 
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          {[
-            { name: "External OCR API", requests: "8,730", latency: "142ms" },
-            { name: "Recipe API", requests: "4,891", latency: "89ms" },
-          ].map((item) => (
-            <div key={item.name} className="p-4 bg-[#fafbfc] rounded-[16px] border border-gray-100">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-[#1a2332]">{item.name}</span>
-                <span className="flex items-center gap-1 text-xs text-emerald-500 font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> {t("pages.admin.statuses.healthy")}
-                </span>
+      <section className="bg-white rounded-[20px] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-7">
+        <h2 className="font-bold text-[#1a2332] mb-2">{t("pages.admin.securityTitle")}</h2>
+        <p className="text-xs text-[#4A5568]/50 mb-6">{t("pages.admin.securityText")}</p>
+        <div className="space-y-3">
+          {["twoFactor", "loginAlerts", "sessionReview"].map((key) => (
+            <div key={key} className="flex items-center justify-between rounded-2xl border border-gray-100 p-4">
+              <div>
+                <div className="text-sm font-semibold text-[#1a2332]">{t(`pages.admin.security.${key}.title`)}</div>
+                <div className="text-xs text-[#4A5568]/45 mt-0.5">{t(`pages.admin.security.${key}.text`)}</div>
               </div>
-              <div className="flex items-center gap-4">
-                <div>
-                  <div className="text-xs text-[#4A5568]/40">{t("pages.admin.requestsToday")}</div>
-                  <div className="text-sm font-bold text-[#1a2332]">{item.requests}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-[#4A5568]/40">{t("pages.admin.avgLatency")}</div>
-                  <div className="text-sm font-bold text-[#1a2332]">{item.latency}</div>
-                </div>
+              <div className="w-11 h-6 rounded-full bg-[#B2D2A4] relative">
+                <div className="absolute right-1 top-1 w-4 h-4 rounded-full bg-white shadow" />
               </div>
             </div>
           ))}
         </div>
-      </div>
-    </motion.div>
+      </section>
+    </div>
   );
 }
 
 export function AdminDashboard() {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
-  const [activeNav, setActiveNav] = useState("dashboardOverview");
+  const [activeNav, setActiveNav] = useState<AdminNavKey>("dashboardOverview");
   const [adminUser, setAdminUser] = useState<UserDTO | null>(null);
   const [checkingAccess, setCheckingAccess] = useState(true);
 
@@ -490,10 +434,9 @@ export function AdminDashboard() {
         </div>
 
         <div className="p-8">
-          <KPICards t={t} />
-          <UserTable t={t} />
-          <ModerationQueue t={t} />
-          <SystemMetrics t={t} />
+          {activeNav === "dashboardOverview" && <DashboardOverview t={t} setActiveNav={setActiveNav} />}
+          {activeNav === "userManagement" && <UserManagementPage t={t} />}
+          {activeNav === "profileSettings" && <ProfileSettingsPage adminUser={adminUser} t={t} />}
         </div>
       </main>
     </div>

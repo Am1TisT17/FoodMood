@@ -96,7 +96,8 @@ export function FooterSection() {
                   <li key={link.key}>
                     <button
                       onClick={() => (link.path !== "#" ? navigate(link.path) : undefined)}
-                      className="text-sm text-white/45 hover:text-white transition-colors flex items-center gap-1 group"
+                      className="text-sm text-white/45 hover:text-white transition-colors flex items-center gap-1 group leading-snug"
+
                     >
                       {t(`landing.footer.links.${link.key}`)}
                       {link.path === "#" && <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />}
