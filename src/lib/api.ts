@@ -238,6 +238,66 @@ export const api = {
       method: 'POST', body: JSON.stringify({ token, password }),
     }),
 
+  // ───── Admin (requires user.role === 'admin') ─────
+  adminStats: () =>
+    request<{
+      totalUsers: number;
+      activeUsers: number;
+      bannedUsers: number;
+      scansToday: number;
+      co2SavedKg: number;
+    }>('/api/admin/stats'),
+  adminListUsers: (opts: {
+    q?: string;
+    status?: 'active' | 'inactive' | 'banned';
+    role?: 'user' | 'admin';
+    page?: number;
+    limit?: number;
+  } = {}) => {
+    const qs = new URLSearchParams();
+    if (opts.q) qs.set('q', opts.q);
+    if (opts.status) qs.set('status', opts.status);
+    if (opts.role) qs.set('role', opts.role);
+    if (opts.page) qs.set('page', String(opts.page));
+    if (opts.limit) qs.set('limit', String(opts.limit));
+    const qsStr = qs.toString();
+    return request<{
+      users: Array<{
+        id: string;
+        name: string;
+        email: string;
+        role: 'user' | 'admin';
+        status: 'active' | 'inactive' | 'banned';
+        scans: number;
+        registered: string;
+        lastActiveAt: string;
+        emailVerified: boolean;
+      }>;
+      total: number;
+      page: number;
+      limit: number;
+      pages: number;
+    }>(`/api/admin/users${qsStr ? '?' + qsStr : ''}`);
+  },
+  adminGetUser: (id: string) =>
+    request<{ user: UserDTO & { scansCount: number; pantryCount: number; sharedCount: number } }>(
+      `/api/admin/users/${id}`
+    ),
+  adminUpdateUser: (
+    id: string,
+    patch: { status?: 'active' | 'inactive' | 'banned'; role?: 'user' | 'admin'; name?: string }
+  ) =>
+    request<{ user: any }>(`/api/admin/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+  adminBanUser: (id: string) =>
+    request<{ user: any }>(`/api/admin/users/${id}/ban`, { method: 'POST' }),
+  adminUnbanUser: (id: string) =>
+    request<{ user: any }>(`/api/admin/users/${id}/unban`, { method: 'POST' }),
+  adminDeleteUser: (id: string) =>
+    request<{ ok: true }>(`/api/admin/users/${id}`, { method: 'DELETE' }),
+
   // Inventory
   listInventory: () => request<{ items: FoodItemDTO[] }>('/api/inventory'),
   addItem: (item: Omit<FoodItemDTO, 'id'>) =>

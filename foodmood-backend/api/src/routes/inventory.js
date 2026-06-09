@@ -15,7 +15,6 @@ const CATEGORIES = [
 ];
 const UNITS = ['g', 'kg', 'ml', 'L', 'pcs', 'pack'];
 
-// Accepts both "YYYY-MM-DD" and full ISO strings.
 const dateString = z
   .string()
   .refine((s) => !Number.isNaN(Date.parse(s)), 'Invalid date');
@@ -62,7 +61,6 @@ router.post('/', validate(createSchema), async (req, res) => {
   res.status(201).json({ item: item.toDTO() });
 });
 
-// Batch insert — useful for OCR scanner where many items arrive at once.
 router.post(
   '/batch',
   validate({ body: z.object({ items: z.array(createSchema.body).min(1).max(100) }) }),
@@ -79,6 +77,10 @@ router.post(
       parsedItems: req.body.items,
       confirmedItems: req.body.items,
     });
+    // Track activity for the admin dashboard.
+    req.user.scansCount = (req.user.scansCount || 0) + 1;
+    req.user.lastActiveAt = new Date();
+    req.user.save().catch(() => {});
     res.status(201).json({ items: created.map((i) => i.toDTO()) });
   }
 );
@@ -101,7 +103,6 @@ router.delete('/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
-// Disposition actions — update stats and mark item.
 async function disposeAction(req, res, action) {
   const item = await FoodItem.findOne({ _id: req.params.id, user: req.userId, status: 'active' });
   if (!item) return res.status(404).json({ error: 'Active item not found' });
