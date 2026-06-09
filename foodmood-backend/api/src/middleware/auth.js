@@ -18,3 +18,16 @@ export async function authRequired(req, res, next) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
+
+// Run after authRequired. Blocks the request with 403 unless the authenticated
+// user has the admin role. Kept separate from authRequired so non-admin routes
+// stay free of the extra DB role check.
+export function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin privileges required' });
+  }
+  next();
+}

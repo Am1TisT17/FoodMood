@@ -13,6 +13,7 @@ import scanRoutes from './routes/scan.js';
 import communityRoutes from './routes/community.js';
 import statsRoutes from './routes/stats.js';
 import notificationsRoutes from './routes/notifications.js';
+import adminRoutes from './routes/admin.js';
 import { notFound, errorHandler } from './middleware/error.js';
 
 export function createApp() {
@@ -23,7 +24,6 @@ export function createApp() {
   app.use(
     cors({
       origin: (origin, cb) => {
-        // Allow non-browser requests (e.g. curl, server-to-server) and whitelisted origins.
         if (!origin || env.CORS_ORIGIN.includes(origin) || env.CORS_ORIGIN.includes('*')) {
           return cb(null, true);
         }
@@ -33,8 +33,6 @@ export function createApp() {
     })
   );
   app.use(express.json({ limit: '2mb' }));
-  // Cookie parser is required for reading the httpOnly refresh-token cookie
-  // set by /api/auth/login, /register and /refresh.
   app.use(cookieParser());
   app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
@@ -56,6 +54,7 @@ export function createApp() {
   app.use('/api/community', communityRoutes);
   app.use('/api/stats', statsRoutes);
   app.use('/api/notifications', notificationsRoutes);
+  app.use('/api/admin', adminRoutes);
 
   app.use(notFound);
   app.use(errorHandler);
