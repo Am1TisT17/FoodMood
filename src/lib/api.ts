@@ -4,7 +4,8 @@
 // the same names already declared in src/app/context/FoodMoodContext.tsx so the
 // rest of the app needs zero changes.
 
-const BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:4000';
+const env = (import.meta as any).env || {};
+const BASE_URL = env.VITE_API_URL || (env.PROD ? '' : 'http://localhost:4000');
 const TOKEN_KEY = 'foodmood_token';
 
 // Event name dispatched on every token change in the current tab.
